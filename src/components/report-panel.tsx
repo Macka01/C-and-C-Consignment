@@ -200,7 +200,12 @@ export function ReportPanel({
                 </div>
                 {report.notes ? <p className="text-sm text-muted-foreground">{report.notes}</p> : null}
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" className="h-9" render={<a href={`/api/reports/${report.id}/file`} target="_blank" rel="noreferrer" />}>
+                  <Button
+                    variant="outline"
+                    className="h-9"
+                    nativeButton={false}
+                    render={<a href={`/api/reports/${report.id}/file`} target="_blank" rel="noreferrer" />}
+                  >
                     Open file
                   </Button>
                   <Button

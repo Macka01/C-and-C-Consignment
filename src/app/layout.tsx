@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Fraunces, Geist_Mono, Outfit } from "next/font/google";
-import { ThemeProvider } from "next-themes";
 import { AppShell } from "@/components/app-shell";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -33,10 +32,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en-AU" className={`${outfit.variable} ${fraunces.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full">
-        <ThemeProvider forcedTheme="light" enableSystem={false} attribute="class">
-          <AppShell>{children}</AppShell>
-          <Toaster position="top-center" />
-        </ThemeProvider>
+        <AppShell>{children}</AppShell>
+        <Toaster position="top-center" />
       </body>
     </html>
   );

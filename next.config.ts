@@ -5,7 +5,7 @@ function devOrigins() {
   const hosts = new Set(["127.0.0.1", "localhost"]);
   for (const entries of Object.values(os.networkInterfaces())) {
     for (const entry of entries ?? []) {
-      if (entry.family === "IPv4" || entry.family === 4) hosts.add(entry.address);
+      if (entry.family === "IPv4") hosts.add(entry.address);
     }
   }
   return [...hosts];
