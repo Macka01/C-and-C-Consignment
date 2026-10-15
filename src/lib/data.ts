@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import os from "node:os";
-import { getDb, reportsDir } from "@/lib/db";
+import { getDb, reportsDir, usesExternalDataDir } from "@/lib/db";
 import { HttpError } from "@/lib/errors";
 import type {
   Dashboard,
@@ -271,7 +271,7 @@ export function updateStore(id: number, input: StoreInput): Store {
 
 function unlinkStored(name: string) {
   if (!/^[a-zA-Z0-9._-]+$/.test(name)) return;
-  fs.rmSync(path.join(reportsDir(), name), { force: true });
+  fs.rmSync(path.join(/*turbopackIgnore: true*/ reportsDir(), name), { force: true });
 }
 
 export function deleteStore(id: number) {
@@ -726,7 +726,7 @@ export async function saveReport(input: {
   const ext = mimeExtensions[mime];
   const storedName = `${randomUUID()}.${ext}`;
   const bytes = Buffer.from(await input.file.arrayBuffer());
-  fs.writeFileSync(path.join(reportsDir(), storedName), bytes);
+  fs.writeFileSync(path.join(/*turbopackIgnore: true*/ reportsDir(), storedName), bytes);
 
   const db = getDb();
   try {
@@ -791,7 +791,7 @@ export function readReportFile(id: number) {
   if (!/^[a-zA-Z0-9._-]+$/.test(existing.stored_name)) {
     throw new HttpError("That file could not be opened.", 500);
   }
-  const full = path.join(reportsDir(), existing.stored_name);
+  const full = path.join(/*turbopackIgnore: true*/ reportsDir(), existing.stored_name);
   if (!fs.existsSync(full)) {
     throw new HttpError("The saved file is missing from the server.", 404);
   }
@@ -825,13 +825,21 @@ export function getDashboard(): Dashboard {
   };
 }
 
+function bonjourName() {
+  const host = os.hostname().trim().replace(/\.local$/i, "");
+  if (host === "localhost" || !/^[A-Za-z0-9-]+$/.test(host)) return null;
+  return `${host}.local`;
+}
+
 export function getNetwork(): NetworkInfo {
   const addresses: string[] = [];
   for (const entries of Object.values(os.networkInterfaces())) {
     for (const entry of entries ?? []) {
-      if (entry.family === "IPv4" && !entry.internal) addresses.push(entry.address);
+      if (entry.family !== "IPv4" || entry.internal) continue;
+      if (entry.address.startsWith("169.254.")) continue;
+      addresses.push(entry.address);
     }
   }
   const port = Number(process.env.PORT) || 43123;
-  return { port, addresses };
+  return { port, addresses, bonjour: bonjourName(), externalData: usesExternalDataDir() };
 }

@@ -1,18 +1,33 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
 
-const globalForDb = globalThis as unknown as { consignmentDb?: Database.Database };
+const globalForDb = globalThis as unknown as {
+  consignmentDb?: Database.Database;
+  consignmentShutdown?: boolean;
+};
+
+function expandHome(input: string) {
+  if (input === "~") return os.homedir();
+  if (input.startsWith("~/")) return path.join(os.homedir(), input.slice(2));
+  return input;
+}
+
+export function usesExternalDataDir() {
+  return Boolean(process.env.CONSIGNMENT_DATA_DIR?.trim());
+}
 
 export function dataDir() {
-  const dir = path.join(process.cwd(), "data");
-  fs.mkdirSync(dir, { recursive: true });
+  const configured = process.env.CONSIGNMENT_DATA_DIR?.trim();
+  const dir = configured ? path.resolve(expandHome(configured)) : path.join(process.cwd(), "data");
+  fs.mkdirSync(path.join(/*turbopackIgnore: true*/ dir), { recursive: true });
   return dir;
 }
 
 export function reportsDir() {
-  const dir = path.join(dataDir(), "reports");
+  const dir = path.join(/*turbopackIgnore: true*/ dataDir(), "reports");
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -157,10 +172,14 @@ type SeedMove = {
 function seedIfNeeded(db: Database.Database) {
   const already = db.prepare(`SELECT value FROM app_meta WHERE key = 'seeded'`).get();
   if (already) return;
+  if (process.env.CONSIGNMENT_SEED === "0") {
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES ('seeded', 'skipped')`).run();
+    return;
+  }
 
   const storedName = `sample-${randomUUID()}.svg`;
   const svg = sampleReportSvg();
-  fs.writeFileSync(path.join(reportsDir(), storedName), svg);
+  fs.writeFileSync(path.join(/*turbopackIgnore: true*/ reportsDir(), storedName), svg);
 
   const seed = db.transaction(() => {
     const existing = db.prepare(`SELECT value FROM app_meta WHERE key = 'seeded'`).get();
@@ -331,22 +350,34 @@ function seedIfNeeded(db: Database.Database) {
 
   try {
     const wrote = seed.immediate();
-    if (!wrote) fs.rmSync(path.join(reportsDir(), storedName), { force: true });
+    if (!wrote) fs.rmSync(path.join(/*turbopackIgnore: true*/ reportsDir(), storedName), { force: true });
   } catch (error) {
-    fs.rmSync(path.join(reportsDir(), storedName), { force: true });
+    fs.rmSync(path.join(/*turbopackIgnore: true*/ reportsDir(), storedName), { force: true });
     throw error;
   }
 }
 
 export function getDb() {
   if (!globalForDb.consignmentDb) {
-    const db = new Database(path.join(dataDir(), "consignment.db"));
+    const dir = dataDir();
+    console.log(`[consignment] data repository: ${dir}`);
+    const db = new Database(path.join(/*turbopackIgnore: true*/ dir, "consignment.db"));
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
     db.pragma("busy_timeout = 5000");
     migrate(db);
     seedIfNeeded(db);
     globalForDb.consignmentDb = db;
+    if (!globalForDb.consignmentShutdown) {
+      globalForDb.consignmentShutdown = true;
+      const close = () => {
+        const open = globalForDb.consignmentDb;
+        globalForDb.consignmentDb = undefined;
+        open?.close();
+      };
+      process.once("SIGTERM", close);
+      process.once("SIGINT", close);
+    }
   }
   return globalForDb.consignmentDb;
 }

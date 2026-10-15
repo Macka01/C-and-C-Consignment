@@ -12,6 +12,17 @@ import type { Dashboard, NetworkInfo } from "@/lib/types";
 export function DashboardPage() {
   const dashboard = useResource<Dashboard>("/api/dashboard", 15000);
   const network = useResource<NetworkInfo>("/api/network");
+  const sharedServer = network.data?.externalData === true;
+  const bannerTitle = network.loading
+    ? "What’s on this server"
+    : sharedServer
+      ? "This computer is the shared server"
+      : "Sample shelves, ready to edit";
+  const bannerBody = sharedServer
+    ? "Stores, stock, sales, invoices, and shop reports are kept in the data repository on this computer. Every phone and shop computer that opens the address below sees those same records."
+    : network.loading
+      ? "Stores, stock, sales, invoices, and shop reports are kept on this computer. Every phone and shop computer that opens this server sees the same records."
+      : "Harbour Linen, Terrigal Home Room, Gosford Goods, and Woy Woy Window are made-up shops so you can try the tracker. Change a phone number, record a sale, or delete a store. Nothing is locked. Every phone and shop computer that opens this server sees the same records.";
 
   return (
     <div className="grid gap-8">
@@ -23,13 +34,16 @@ export function DashboardPage() {
       />
 
       <div className="rounded-xl border border-primary/20 bg-card px-4 py-4 ring-1 ring-foreground/5">
-        <p className="font-heading text-lg text-foreground">Sample shelves, ready to edit</p>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Harbour Linen, Terrigal Home Room, Gosford Goods, and Woy Woy Window are made-up shops so you can try the tracker. Change a phone number, record a sale, or delete a store. Nothing is locked. Every phone and shop computer that opens this server sees the same records — the data is not stored in the browser.
-        </p>
-        {network.data && network.data.addresses.length > 0 ? (
+        <p className="font-heading text-lg text-foreground">{bannerTitle}</p>
+        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{bannerBody}</p>
+        {network.data && (network.data.bonjour || network.data.addresses.length > 0) ? (
           <p className="mt-3 text-sm">
             Other devices on this network:{" "}
+            {network.data.bonjour ? (
+              <a className="mr-3 font-medium text-primary underline-offset-2 hover:underline" href={`http://${network.data.bonjour}:${network.data.port}`}>
+                http://{network.data.bonjour}:{network.data.port}
+              </a>
+            ) : null}
             {network.data.addresses.map((address) => (
               <a key={address} className="mr-3 font-medium text-primary underline-offset-2 hover:underline" href={`http://${address}:${network.data?.port}`}>
                 http://{address}:{network.data?.port}

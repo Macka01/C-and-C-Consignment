@@ -6,7 +6,14 @@
     "dev": "next dev -H 0.0.0.0 -p 43123",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 43123",
+    "backup": "node scripts/backup-data.mjs",
+    "server:install": "bash server/macos/install.sh",
+    "server:update": "bash server/macos/update.sh",
+    "server:uninstall": "bash server/macos/uninstall.sh",
     "lint": "eslint"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

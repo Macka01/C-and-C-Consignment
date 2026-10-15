@@ -86,6 +86,8 @@ export type Dashboard = {
 export type NetworkInfo = {
   port: number;
   addresses: string[];
+  bonjour: string | null;
+  externalData: boolean;
 };
 
 export type SalesResponse = {

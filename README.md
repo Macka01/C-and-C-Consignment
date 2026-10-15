@@ -43,12 +43,24 @@ npm run start
 
 `npm run start` also binds to `0.0.0.0` on port **43123**. Other devices use the same `http://<this-computer-ip>:43123` address.
 
+## MacBook Pro as the server
+
+The business runs on one MacBook Pro. That Mac serves the pages and keeps the data repository (the database and the shop report files). The steps to move onto it, leave it running, and back it up are in [docs/mac-server.md](docs/mac-server.md).
+
+On the Mac, from the project folder:
+
+```bash
+bash server/macos/install.sh
+```
+
 ## Where the data lives
 
-- SQLite database: `data/consignment.db` (created on first launch)
-- Report files: `data/reports/`
+- Development: `data/consignment.db` and `data/reports/` inside the project folder (created on first launch)
+- Mac server: `~/Library/Application Support/CottonAndClay/data/` when `CONSIGNMENT_DATA_DIR` is set
 
 Those paths are on the computer running the server. Every device reads and writes that one copy. Two people can record a sale or a transfer at the same time; each change is applied to the current quantity, and a transfer out or sale will not take stock below zero.
+
+The first launch of a development database loads sample shops. The Mac server install sets `CONSIGNMENT_SEED=0`, so a new repository starts empty. A database you copy across keeps the records already in it.
 
 Sample stores, products, transfers, sales, one invoice, and one report are loaded the first time the database is created. They are ordinary records — edit or delete them. Deleting everything does not bring the sample back.
 
@@ -61,5 +73,5 @@ Uploads accept JPEG, PNG, WEBP, HEIC, and PDF, up to 20 MB. Files stay on this s
 ## Limits
 
 - No user accounts, roles, or audit of who changed a row.
-- Data exists only on the machine that runs the app. Back up `data/` if you need a copy.
+- Data exists only on the machine that runs the app. On the Mac server, back up the data repository with `npm run backup` (the install also schedules a daily copy).
 - “This month” on the dashboard follows the server’s clock.
