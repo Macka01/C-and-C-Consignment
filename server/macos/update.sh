@@ -1,14 +1,20 @@
 #!/bin/bash
-# Update the app on the Mac, then reinstall the login service.
-# The data repository is outside this folder and is backed up before the new version starts.
+# Pull a newer tracker, rebuild the image, and restart the container.
+# The data repository stays on the Mac disk.
 
 set -euo pipefail
 
-APP_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-cd "$APP_DIR"
+# shellcheck source=common.sh
+. "$(cd "$(dirname "$0")" && pwd)/common.sh"
 
+cd "$APP_DIR"
 if [[ -d .git ]]; then
   git pull --ff-only
+fi
+
+wait_for_docker 24
+if [[ -f "$HOST_ENV" && -f "$DATA_DIR/consignment.db" ]]; then
+  compose run --rm backup || echo "Backup before update failed; continuing."
 fi
 
 exec bash "$APP_DIR/server/macos/install.sh"

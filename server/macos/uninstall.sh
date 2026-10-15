@@ -1,5 +1,6 @@
 #!/bin/bash
-# Stop the login service. The data repository is left on disk.
+# Stop the tracker container and login helpers. The data repository is left on disk.
+# Other Docker stacks and Tailscale itself are not touched.
 
 set -euo pipefail
 
@@ -8,15 +9,24 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 
+# shellcheck source=common.sh
+. "$(cd "$(dirname "$0")" && pwd)/common.sh"
+
 UID_VALUE="$(id -u)"
-AGENT_DIR="$HOME/Library/LaunchAgents"
-DATA_DIR="$HOME/Library/Application Support/CottonAndClay/data"
 
-launchctl bootout "gui/$UID_VALUE/com.cottonandclay.tracker" >/dev/null 2>&1 || true
-launchctl bootout "gui/$UID_VALUE/com.cottonandclay.backup" >/dev/null 2>&1 || true
-rm -f "$AGENT_DIR/com.cottonandclay.tracker.plist"
-rm -f "$AGENT_DIR/com.cottonandclay.backup.plist"
+launchctl bootout "gui/$UID_VALUE/$LABEL" >/dev/null 2>&1 || true
+launchctl bootout "gui/$UID_VALUE/$BACKUP_LABEL" >/dev/null 2>&1 || true
+rm -f "$AGENT_DIR/$LABEL.plist"
+rm -f "$AGENT_DIR/$BACKUP_LABEL.plist"
 
-echo "The tracker service is stopped."
+if docker info >/dev/null 2>&1 && [[ -f "$HOST_ENV" ]]; then
+  compose down || true
+fi
+
+echo "The tracker container is stopped."
 echo "The data repository is still at: $DATA_DIR"
-echo "Backups are still at: $HOME/Library/Application Support/CottonAndClay/backups"
+echo "Backups are still at: $BACKUP_DIR"
+echo "Docker Desktop, Tailscale, and any other containers were left as they are."
+if command -v tailscale >/dev/null 2>&1 && serve_already_ours; then
+  echo "Tailscale still publishes HTTPS for this tracker. To drop only that mapping: tailscale serve --https=443 off"
+fi

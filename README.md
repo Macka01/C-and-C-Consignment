@@ -26,13 +26,13 @@ On this computer, open [http://127.0.0.1:43123](http://127.0.0.1:43123).
    hostname -I
    ```
 
-   On macOS, use System Settings → Network, or `ipconfig getifaddr en0`.
+   On macOS, use System Settings → Network, or `ipconfig getifaddr en0`. On Tailscale, use the machine name or `tailscale ip -4`.
 
 3. On a phone or another computer on the same network, open `http://<this-computer-ip>:43123`.
 
    Example: `http://192.168.1.20:43123`.
 
-The machine’s firewall has to allow inbound TCP **43123**. The dashboard also lists the addresses this server can see.
+The machine’s firewall has to allow inbound TCP **43123**. The dashboard also lists the addresses this server can see. On the MacBook server, phones on the tailnet should use the Tailscale HTTPS address instead.
 
 ## Production
 
@@ -45,13 +45,15 @@ npm run start
 
 ## MacBook Pro as the server
 
-The business runs on one MacBook Pro. That Mac serves the pages and keeps the data repository (the database and the shop report files). The steps to move onto it, leave it running, and back it up are in [docs/mac-server.md](docs/mac-server.md).
+The business runs on one MacBook Pro that already has Docker Desktop and Tailscale. That Mac serves the pages in a Compose container (`cotton-clay-tracker`) and keeps the data repository on its disk. Other Docker stacks stay as they are. Phones reach it on the tailnet (HTTPS via Tailscale Serve) and on the studio Wi-Fi. The steps are in [docs/mac-server.md](docs/mac-server.md).
 
-On the Mac, from the project folder:
+On the Mac, with Docker Desktop running, from the project folder:
 
 ```bash
 bash server/macos/install.sh
 ```
+
+Do not turn on Tailscale Funnel. There is no login on the tracker.
 
 ## Where the data lives
 
@@ -73,5 +75,5 @@ Uploads accept JPEG, PNG, WEBP, HEIC, and PDF, up to 20 MB. Files stay on this s
 ## Limits
 
 - No user accounts, roles, or audit of who changed a row.
-- Data exists only on the machine that runs the app. On the Mac server, back up the data repository with `npm run backup` (the install also schedules a daily copy).
+- Data exists only on the machine that runs the app. On the Mac server, back up the data repository with `bash server/macos/backup.sh` (the install also schedules a daily copy).
 - “This month” on the dashboard follows the server’s clock.

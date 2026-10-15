@@ -87,6 +87,7 @@ export type NetworkInfo = {
   port: number;
   addresses: string[];
   bonjour: string | null;
+  urls: string[];
   externalData: boolean;
 };
 

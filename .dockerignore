@@ -1,0 +1,16 @@
+.git
+.github
+.next
+node_modules
+data
+backups
+docs
+server/macos/host.env
+*.md
+.env*
+!.env.example
+AGENTS.md
+.DS_Store
+coverage
+*.tsbuildinfo
+next-env.d.ts

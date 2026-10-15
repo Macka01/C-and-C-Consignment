@@ -825,21 +825,47 @@ export function getDashboard(): Dashboard {
   };
 }
 
+function inDocker() {
+  return process.env.CONSIGNMENT_DOCKER === "1";
+}
+
+function publicUrls() {
+  return (process.env.CONSIGNMENT_PUBLIC_URLS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function bonjourName() {
+  const configured = process.env.CONSIGNMENT_BONJOUR?.trim().replace(/^https?:\/\//i, "");
+  if (configured) return configured.replace(/\/$/, "");
+  if (inDocker()) return null;
   const host = os.hostname().trim().replace(/\.local$/i, "");
   if (host === "localhost" || !/^[A-Za-z0-9-]+$/.test(host)) return null;
   return `${host}.local`;
 }
 
 export function getNetwork(): NetworkInfo {
+  const port = Number(process.env.PORT) || 43123;
   const addresses: string[] = [];
-  for (const entries of Object.values(os.networkInterfaces())) {
-    for (const entry of entries ?? []) {
-      if (entry.family !== "IPv4" || entry.internal) continue;
-      if (entry.address.startsWith("169.254.")) continue;
-      addresses.push(entry.address);
+  if (!inDocker()) {
+    for (const entries of Object.values(os.networkInterfaces())) {
+      for (const entry of entries ?? []) {
+        if (entry.family !== "IPv4" || entry.internal) continue;
+        if (entry.address.startsWith("169.254.")) continue;
+        addresses.push(entry.address);
+      }
     }
   }
-  const port = Number(process.env.PORT) || 43123;
-  return { port, addresses, bonjour: bonjourName(), externalData: usesExternalDataDir() };
+  const bonjour = bonjourName();
+  const urls = [...publicUrls()];
+  if (bonjour) {
+    const local = `http://${bonjour}:${port}`;
+    if (!urls.includes(local)) urls.push(local);
+  }
+  for (const address of addresses) {
+    const href = `http://${address}:${port}`;
+    if (!urls.includes(href)) urls.push(href);
+  }
+  return { port, addresses, bonjour, urls, externalData: usesExternalDataDir() };
 }

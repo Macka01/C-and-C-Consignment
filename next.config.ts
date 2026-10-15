@@ -12,12 +12,17 @@ function devOrigins() {
 }
 
 const nextConfig: NextConfig = {
+  // Slim image for the Mac Docker service.
+  output: "standalone",
   // Live stock must render on each request. Cache Components blocks
   // usePathname/useParams and leaves the browser on the loading shell.
   cacheComponents: false,
   // Dev assets are tied to localhost. Phones and 127.0.0.1 need an explicit allow.
   allowedDevOrigins: devOrigins(),
   serverExternalPackages: ["better-sqlite3"],
+  outputFileTracingIncludes: {
+    "/*": ["./node_modules/better-sqlite3/**/*", "./scripts/backup-data.mjs"],
+  },
   turbopack: {
     rules: {
       "*.css": {
