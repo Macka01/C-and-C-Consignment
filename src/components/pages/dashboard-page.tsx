@@ -25,7 +25,7 @@ export function DashboardPage() {
       <div className="rounded-xl border border-primary/20 bg-card px-4 py-4 ring-1 ring-foreground/5">
         <p className="font-heading text-lg text-foreground">Sample shelves, ready to edit</p>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Harbour Linen, Terrigal Home Room, and Gosford Goods are made-up shops so you can try the tracker. Change a phone number, record a sale, or delete a store. Nothing is locked. Every phone and shop computer that opens this server sees the same records — the data is not stored in the browser.
+          Harbour Linen, Terrigal Home Room, Gosford Goods, and Woy Woy Window are made-up shops so you can try the tracker. Change a phone number, record a sale, or delete a store. Nothing is locked. Every phone and shop computer that opens this server sees the same records — the data is not stored in the browser.
         </p>
         {network.data && network.data.addresses.length > 0 ? (
           <p className="mt-3 text-sm">

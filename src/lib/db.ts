@@ -195,6 +195,14 @@ function seedIfNeeded(db: Database.Database) {
         rent_amount: 260,
         commission_rate: null,
       },
+      {
+        name: "Woy Woy Window",
+        address: "12 Railway Street, Woy Woy NSW 2256",
+        phone: "02 4341 1000",
+        contact_name: "Sam Cole",
+        rent_amount: 180,
+        commission_rate: 20,
+      },
     ];
     for (const store of stores) {
       insertStore.run({ ...store, created_at: "2026-07-01T00:00:00.000Z", updated_at: "2026-07-01T00:00:00.000Z" });
