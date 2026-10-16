@@ -29,6 +29,7 @@ After the move, record sales, transfers, invoices, and reports only on this Mac�
 | Address on this Mac | `http://127.0.0.1:43123` |
 | Address on Wi-Fi | `http://<the-mac-name>.local:43123` |
 | Address on Tailscale | `http://<tailscale-name>:43123`, or the HTTPS hostname you add on `homeserver-caddy-1` |
+| Manage from the Mac Mini | Tailscale SSH into Wendys-MBP; `server/macos/remote.sh` |
 
 The data repository sits outside the app folder and outside the image. Rebuilding the container copies new code in and leaves the database where it is.
 
@@ -108,6 +109,8 @@ Do this on the MacBook Pro itself. `homeserver-caddy-1`, `homeserver-hello-1`, a
 11. **Stop using any old copy.** If the tracker was running on another computer, leave that one stopped. Two servers become two different sets of stock.
 
 12. **Day to day.** Leave the Mac plugged in, logged in, and awake. Leave Docker Desktop and Tailscale running. Leave the three `homeserver-*` containers running. Phones use the bookmark from step 9 (or the Caddy hostname from step 10).
+
+13. **Optional: manage it from the Mac Mini.** One-time on Wendys-MBP: `bash server/macos/enable-remote.sh`. After that, the Mini uses Tailscale SSH. Commands are in [Manage from the Mac Mini](#11-manage-from-the-mac-mini). The tracker website still has no login.
 
 The sections below are the same steps with extra detail, plus backups, updates, and what to do when something is wrong.
 
@@ -359,6 +362,77 @@ If this folder is not a git checkout, copy the new app files in yourself, leave 
 
 - See that it is up: `http://127.0.0.1:43123/api/health` answers `{"ok":true}`.
 
+## 11. Manage from the Mac Mini
+
+The tracker stays on **Wendys-MBP**. The Mini is only a remote keyboard. Use **Tailscale SSH** (same tailnet they already have). Do not replace the homeserver stack. Do not bind 80, 443, or 5432.
+
+There is still **no login on the tracker website**. This SSH access is only so Steve can start/stop/update the container and read logs.
+
+### One time on Wendys-MBP
+
+Logged in as the user who stays logged in, from `~/cotton-clay`:
+
+```bash
+bash server/macos/enable-remote.sh
+```
+
+That turns on Tailscale SSH, and macOS Remote Login as a fallback. It prints the `USER` and `MBP` values to use on the Mini. Leave Wendys-MBP plugged in, logged in, and awake, with Docker Desktop and Tailscale connected.
+
+If `enable-remote.sh` cannot turn on Remote Login, do it in System Settings → General → Sharing → **Remote Login**, and allow that same user.
+
+On the Tailscale admin console, SSH must be allowed from the Mini to Wendys-MBP. The default ACL usually allows it. Funnel stays off.
+
+### One time on the Mac Mini
+
+1. Open Tailscale and connect to the **same tailnet**.
+2. Confirm you can see Wendys-MBP:
+
+   ```bash
+   tailscale status
+   ```
+
+3. Set these to the values the MacBook printed (check `tailscale status` if the name differs). `REMOTE` must be the path **on Wendys-MBP**, not on the Mini:
+
+   ```bash
+   USER=steve
+   MBP=Wendys-MBP
+   REMOTE=/Users/steve/cotton-clay/server/macos/remote.sh
+   ```
+
+   Use the MacBook’s logged-in account for `USER`. Copy `REMOTE` from `enable-remote.sh`.
+
+### Day to day on the Mini
+
+Paste after the one-time `USER` / `MBP` / `REMOTE` lines. Each command runs **on Wendys-MBP** and only touches `cotton-clay-tracker`.
+
+```bash
+# status (tracker health + the three homeserver containers still Up)
+tailscale ssh "$USER@$MBP" -- bash "$REMOTE" status
+
+# last log lines
+tailscale ssh "$USER@$MBP" -- bash "$REMOTE" logs
+
+# restart tracker only
+tailscale ssh "$USER@$MBP" -- bash "$REMOTE" restart
+
+# git pull, rebuild tracker, leave homeserver alone
+tailscale ssh "$USER@$MBP" -- bash "$REMOTE" update
+
+# backup the data repository
+tailscale ssh "$USER@$MBP" -- bash "$REMOTE" backup
+
+# stop the tracker only (homeserver-caddy-1 / hello / postgres stay up)
+tailscale ssh "$USER@$MBP" -- bash "$REMOTE" stop
+```
+
+If Tailscale SSH is unavailable, Remote Login over the tailnet is the fallback:
+
+```bash
+ssh "$USER@$MBP" "bash $REMOTE status"
+```
+
+Never run `docker stop homeserver-caddy-1`, `homeserver-hello-1`, or `homeserver-postgres-1`. `remote.sh` refuses those names.
+
 ## When something is wrong
 
 **The phone cannot open the page.** The Mac is asleep, logged out, Docker Desktop is paused, or Tailscale is disconnected on the Mac or the phone. Wake the Mac, log in, wait until Docker is running, check the Tailscale menu extra, then try `http://127.0.0.1:43123` on the Mac itself.
@@ -369,6 +443,8 @@ If this folder is not a git checkout, copy the new app files in yourself, leave 
 
 **Port 43123 is in use.** An old `npm run dev`, an old Node LaunchAgent, or another container is bound to it. Stop that, then install again.
 
-**The Mac restarted and the site is down.** Log in. Wait for Docker Desktop. The LaunchAgent retries until Docker answers, then starts the container. Tailscale needs to be connected as well.
+**The Mac restarted and the site is down.** Log in on Wendys-MBP. Wait for Docker Desktop. The LaunchAgent retries until Docker answers, then starts the container. Tailscale needs to be connected as well.
+
+**The Mini cannot SSH.** On Wendys-MBP, Tailscale connected, `sudo tailscale set --ssh` already run, user still logged in. On the Mini, same tailnet, `tailscale status` shows Wendys-MBP. Try `USER` from `enable-remote.sh`. Fallback: Remote Login on, then `ssh "$USER@$MBP"`.
 
 **A report photo will not upload from the phone.** Prefer the Caddy HTTPS hostname once it exists. The file picker still works on plain HTTP on port 43123. Files stay in the data repository on this Mac, not in iCloud. Raise the Caddy `request_body` max to 20 MB if large photos fail.
