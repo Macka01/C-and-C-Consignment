@@ -415,6 +415,8 @@ ssh stevemcintyre@100.73.158.74 "bash /Users/stevemcintyre/cotton-clay/server/ma
 
 `ssh stevemcintyre@homeserver` is the same machine if MagicDNS resolves it. Use ordinary `ssh`, not `tailscale ssh`. Each command runs **on the MacBook** and only touches `cotton-clay-tracker`. `status` also lists the three homeserver containers (they must stay Up).
 
+The first `ssh` asks `Are you sure you want to continue connecting` — type `yes`. Then the Mac password for `stevemcintyre` on Wendys-MBP. Later connections skip the fingerprint question.
+
 Never run `docker stop homeserver-caddy-1`, `homeserver-hello-1`, or `homeserver-postgres-1`. `remote.sh` refuses those names.
 
 ## When something is wrong
