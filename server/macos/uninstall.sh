@@ -29,7 +29,7 @@ fi
 echo "The tracker container is stopped."
 echo "The data repository is still at: $DATA_DIR"
 echo "Backups are still at: $BACKUP_DIR"
-echo "Docker Desktop, Tailscale, and any other containers were left as they are."
+echo "Docker Desktop, Tailscale, homeserver-caddy-1, homeserver-hello-1, and homeserver-postgres-1 were left as they are."
 if command -v tailscale >/dev/null 2>&1 && serve_already_ours; then
   echo "Tailscale still publishes HTTPS for this tracker. To drop only that mapping: tailscale serve --https=443 off"
 fi

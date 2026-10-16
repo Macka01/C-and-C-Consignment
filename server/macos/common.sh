@@ -107,63 +107,131 @@ for line in open(path, encoding="utf-8"):
 ' "$key" "$HOST_ENV"
 }
 
-find_homeserver() {
-  local names
-  names="$(docker ps --format '{{.Names}}' 2>/dev/null || true)"
-  printf '%s\n' "$names" | python3 -c 'import sys
+# Compose project `homeserver` on Wendys-MBP. There is no container named "homeserver".
+HOMESERVER_CADDY="homeserver-caddy-1"
+HOMESERVER_HELLO="homeserver-hello-1"
+HOMESERVER_POSTGRES="homeserver-postgres-1"
+
+pick_homeserver_caddy() {
+  python3 -c 'import sys
 names=[line.strip() for line in sys.stdin if line.strip()]
+want=("homeserver-caddy-1",)
 for name in names:
-    if name.lower() == "homeserver":
+    if name in want:
         print(name)
         raise SystemExit(0)
 for name in names:
     low=name.lower()
-    if low.endswith("-homeserver") or low.endswith("_homeserver") or low.endswith("_homeserver_1") or "-homeserver-" in low:
+    if low == "homeserver-caddy" or low.startswith("homeserver-caddy-"):
         print(name)
         raise SystemExit(0)
 raise SystemExit(1)'
+}
+
+find_homeserver_caddy() {
+  local names
+  names="$(docker ps --format '{{.Names}}' 2>/dev/null || true)"
+  printf '%s\n' "$names" | pick_homeserver_caddy
+}
+
+# Used by install/start: the reverse-proxy container, not hello or postgres.
+find_homeserver() {
+  find_homeserver_caddy
+}
+
+homeserver_stack_present() {
+  local names
+  names="$(docker ps --format '{{.Names}}' 2>/dev/null || true)"
+  printf '%s\n' "$names" | python3 -c 'import sys
+names=set(line.strip() for line in sys.stdin if line.strip())
+need={"homeserver-caddy-1","homeserver-hello-1","homeserver-postgres-1"}
+raise SystemExit(0 if need & names else 1)' >/dev/null 2>&1
 }
 
 homeserver_exists_stopped() {
   local rows
   rows="$(docker ps -a --format '{{.Names}} {{.Status}}' 2>/dev/null || true)"
   printf '%s\n' "$rows" | python3 -c 'import sys
+wanted={"homeserver-caddy-1","homeserver-caddy"}
 for line in sys.stdin:
     parts=line.strip().split(" ", 1)
     if not parts:
         continue
     name=parts[0]
     status=parts[1] if len(parts)>1 else ""
-    if name.lower()=="homeserver" and not status.lower().startswith("up"):
+    low=name.lower()
+    if (name in wanted or low.startswith("homeserver-caddy")) and not status.lower().startswith("up"):
         raise SystemExit(0)
 raise SystemExit(1)' >/dev/null 2>&1
 }
 
+homeserver_compose_network() {
+  local caddy saved net
+  caddy="$(find_homeserver_caddy 2>/dev/null || true)"
+  saved="$(host_env_value HOMESERVER_NETWORK || true)"
+  if [[ -n "$saved" ]] && docker network inspect "$saved" >/dev/null 2>&1; then
+    printf '%s\n' "$saved"
+    return 0
+  fi
+  if [[ -n "$caddy" ]]; then
+    while read -r net; do
+      [[ -z "$net" ]] && continue
+      case "$net" in
+        bridge|host|none|cotton-clay) continue ;;
+      esac
+      if [[ "$net" == homeserver ]] || [[ "$net" == homeserver_* ]] || [[ "$net" == homeserver-* ]]; then
+        printf '%s\n' "$net"
+        return 0
+      fi
+    done < <(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}' "$caddy" 2>/dev/null || true)
+    while read -r net; do
+      [[ -z "$net" ]] && continue
+      case "$net" in
+        bridge|host|none|cotton-clay) continue ;;
+      esac
+      printf '%s\n' "$net"
+      return 0
+    done < <(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}' "$caddy" 2>/dev/null || true)
+  fi
+  for net in homeserver_default homeserver; do
+    if docker network inspect "$net" >/dev/null 2>&1; then
+      printf '%s\n' "$net"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Leave homeserver-caddy-1, homeserver-hello-1, and homeserver-postgres-1 running.
+# Join Caddy (or the homeserver compose network) so it can proxy to cotton-clay-tracker:43123.
 join_homeserver_network() {
-  local hs net
-  if ! hs="$(find_homeserver)"; then
+  local caddy net
+  caddy="$(find_homeserver_caddy 2>/dev/null || true)"
+  if [[ -z "$caddy" ]]; then
     if homeserver_exists_stopped; then
-      echo "Container homeserver exists but is not running. Start it, then run: bash server/macos/start.sh"
+      echo "homeserver-caddy-1 exists but is not running. Start the homeserver Compose stack, then run: bash server/macos/start.sh"
+    elif ! homeserver_stack_present; then
+      echo "Did not see homeserver-caddy-1. The tracker is still on port 43123. Start the homeserver stack (caddy, hello, postgres) and run: bash server/macos/start.sh"
     fi
     return 0
   fi
-  echo "Found container $hs. Leaving it running and sharing a Docker network so it can proxy to cotton-clay-tracker."
-  docker network connect cotton-clay "$hs" 2>/dev/null || true
-  while read -r net; do
-    [[ -z "$net" ]] && continue
-    case "$net" in
-      bridge|host|none|cotton-clay) continue ;;
-    esac
+  echo "Found reverse proxy $caddy. Leaving homeserver-caddy-1, homeserver-hello-1, and homeserver-postgres-1 running."
+  docker network connect cotton-clay "$caddy" 2>/dev/null || true
+  if net="$(homeserver_compose_network)"; then
+    echo "Joining cotton-clay-tracker to Docker network $net so Caddy can reach http://cotton-clay-tracker:43123"
     docker network connect "$net" cotton-clay-tracker 2>/dev/null || true
-  done < <(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}' "$hs" 2>/dev/null || true)
+  fi
 }
 
 detach_homeserver_network() {
-  local hs
-  if hs="$(find_homeserver)"; then
-    docker network disconnect cotton-clay "$hs" 2>/dev/null || true
-  elif hs="$(host_env_value HOMESERVER_CONTAINER)"; then
-    [[ -n "$hs" ]] && docker network disconnect cotton-clay "$hs" 2>/dev/null || true
+  local caddy net
+  caddy="$(find_homeserver_caddy 2>/dev/null || host_env_value HOMESERVER_CONTAINER || true)"
+  net="$(homeserver_compose_network 2>/dev/null || host_env_value HOMESERVER_NETWORK || true)"
+  if [[ -n "$caddy" ]]; then
+    docker network disconnect cotton-clay "$caddy" 2>/dev/null || true
+  fi
+  if [[ -n "$net" ]]; then
+    docker network disconnect "$net" cotton-clay-tracker 2>/dev/null || true
   fi
 }
 
@@ -181,7 +249,7 @@ join_urls() {
 }
 
 write_host_env() {
-  local tz https_url magic_http ip_http lan_http bonjour homeserver_url homeserver_name
+  local tz https_url magic_http ip_http lan_http bonjour homeserver_url homeserver_name homeserver_net
   tz="$(host_timezone)"
   https_url=""
   magic_http=""
@@ -189,7 +257,8 @@ write_host_env() {
   lan_http=""
   bonjour="$(bonjour_name)"
   homeserver_url="$(host_env_value CONSIGNMENT_HOMESERVER_URL || true)"
-  homeserver_name="$(find_homeserver 2>/dev/null || host_env_value HOMESERVER_CONTAINER || true)"
+  homeserver_name="$(find_homeserver_caddy 2>/dev/null || host_env_value HOMESERVER_CONTAINER || true)"
+  homeserver_net="$(homeserver_compose_network 2>/dev/null || host_env_value HOMESERVER_NETWORK || true)"
   if tailscale_ready; then
     local dns host ip
     dns="$(tailscale_dns_name)"
@@ -225,6 +294,7 @@ CONSIGNMENT_BONJOUR=${bonjour}
 CONSIGNMENT_PUBLIC_URLS=${urls}
 CONSIGNMENT_HOMESERVER_URL=${homeserver_url}
 HOMESERVER_CONTAINER=${homeserver_name}
+HOMESERVER_NETWORK=${homeserver_net}
 EOF
 }
 
@@ -255,9 +325,9 @@ raise SystemExit(1)' >/dev/null 2>&1
 }
 
 enable_tailscale_https() {
-  if find_homeserver >/dev/null; then
-    echo "Container homeserver is already the front door. Not taking Tailscale HTTPS 443."
-    echo "Point homeserver at http://cotton-clay-tracker:43123 (see docs/mac-server.md)."
+  if find_homeserver_caddy >/dev/null || homeserver_stack_present; then
+    echo "homeserver-caddy-1 already owns host ports 80 and 443. Not taking those ports, 5432, or Tailscale HTTPS 443."
+    echo "Point Caddy at http://cotton-clay-tracker:43123 (see docs/mac-server.md)."
     write_host_env "http"
     return 1
   fi

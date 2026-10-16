@@ -1,10 +1,16 @@
 # Move the tracker onto the MacBook Pro
 
-The MacBook Pro is the one server. It already runs **Docker Desktop**, **Tailscale**, and a container named **`homeserver`**. The tracker is a second container next to that, not a replacement for it.
+The MacBook Pro is the one server. It already runs **Docker Desktop**, **Tailscale**, and Compose project **`homeserver`** (this is Wendy’s Mac, `Wendys-MBP`). That stack is three containers — there is **no** container named `homeserver`:
 
-- **Web page server.** A Docker container named `cotton-clay-tracker` serves the tracker on port **43123**. `homeserver` stays up and remains the front door (80/443 and Tailscale HTTPS).
+- `homeserver-caddy-1` — Caddy, the front door on host **80** and **443**
+- `homeserver-hello-1` — Caddy file server
+- `homeserver-postgres-1` — Postgres on **5432** (not published to the Mac)
+
+The tracker is a fourth container next to those, not a replacement for any of them.
+
+- **Web page server.** Container `cotton-clay-tracker` serves the tracker on port **43123** only. It never binds 80, 443, or 5432. The three homeserver containers stay up.
 - **Data repository.** The database and shop report files stay on the Mac disk, bind-mounted into the tracker container. They are not stored in a Docker volume, and they are not in the browser.
-- **Who can open it.** On the Mac, `http://127.0.0.1:43123`. On Wi-Fi, the `.local` address on port 43123. Through `homeserver`, a hostname you add that reverse-proxies to `http://cotton-clay-tracker:43123`. Tailscale Funnel stays off — the tracker has no login, so it must not be on the public internet.
+- **Who can open it.** On the Mac, `http://127.0.0.1:43123`. On Wi-Fi, the `.local` address on port 43123. Through Caddy, a hostname you add on `homeserver-caddy-1` that reverse-proxies to `http://cotton-clay-tracker:43123`. Tailscale Funnel stays off — the tracker has no login, so it must not be on the public internet.
 
 After the move, record sales, transfers, invoices, and reports only on this Mac’s address. Stop the copy that was running on any other computer.
 
@@ -22,7 +28,7 @@ After the move, record sales, transfers, invoices, and reports only on this Mac�
 | Logs | `~/Library/Logs/CottonAndClay`, plus `docker compose logs tracker` |
 | Address on this Mac | `http://127.0.0.1:43123` |
 | Address on Wi-Fi | `http://<the-mac-name>.local:43123` |
-| Address on Tailscale | `http://<tailscale-name>:43123`, or the HTTPS hostname you add on `homeserver` |
+| Address on Tailscale | `http://<tailscale-name>:43123`, or the HTTPS hostname you add on `homeserver-caddy-1` |
 
 The data repository sits outside the app folder and outside the image. Rebuilding the container copies new code in and leaves the database where it is.
 
@@ -34,13 +40,13 @@ Node.js does not need to be installed on the Mac. The image has Node 22.
 
 **No.** Do not install Visual Studio, Visual Studio Code, or Cursor on the Mac just to run this.
 
-This is a website that Docker already knows how to build. The Mac’s job is to stay awake, keep Docker Desktop and Tailscale running, and leave `homeserver` as it is. You use **Terminal** for a few commands, then Safari or a phone browser to open the tracker.
+This is a website that Docker already knows how to build. The Mac’s job is to stay awake, keep Docker Desktop and Tailscale running, and leave the three `homeserver-*` containers as they are. You use **Terminal** for a few commands, then Safari or a phone browser to open the tracker.
 
 You also do **not** need Node.js on the Mac. You only need git if you clone the project (if `git` is missing, macOS offers **Xcode Command Line Tools** — that is Apple’s small tools package, not Visual Studio).
 
 ## Follow these steps in order
 
-Do this on the MacBook Pro itself. `homeserver` stays running the whole time.
+Do this on the MacBook Pro itself. `homeserver-caddy-1`, `homeserver-hello-1`, and `homeserver-postgres-1` stay running the whole time.
 
 1. **Plug the Mac in** and leave it plugged in. Leave yourself logged in. Leave the lid open (or closed only if power and an external display are connected). A sleeping Mac means the phones lose the tracker.
 
@@ -58,7 +64,7 @@ Do this on the MacBook Pro itself. `homeserver` stays running the whole time.
    docker ps
    ```
 
-   You should already see a container named `homeserver`. Leave it running.
+   You should already see `homeserver-caddy-1`, `homeserver-hello-1`, and `homeserver-postgres-1`. Leave all three running. There is no container named `homeserver`.
 
 4. **Confirm Tailscale is connected** on this Mac (menu extra is connected). On each iPhone, install Tailscale and log into the **same** tailnet. Leave Funnel off.
 
@@ -84,35 +90,35 @@ Do this on the MacBook Pro itself. `homeserver` stays running the whole time.
 
    If you have no real records yet, skip this step. The Mac will start with an empty tracker, not the sample shops.
 
-7. **Install and start the tracker.** Docker Desktop must still be running. `homeserver` must still be running.
+7. **Install and start the tracker.** Docker Desktop must still be running. The three `homeserver-*` containers must still be running.
 
    ```bash
    cd "$HOME/cotton-clay"
    bash server/macos/install.sh
    ```
 
-   The first build takes several minutes. When it finishes it prints addresses. `homeserver` is left running. The new container is `cotton-clay-tracker`.
+   The first build takes several minutes. When it finishes it prints addresses. The three homeserver containers are left running. The new container is `cotton-clay-tracker` on port **43123**.
 
-8. **Check it on the Mac.** In Safari open [http://127.0.0.1:43123](http://127.0.0.1:43123). You should see **This computer is the shared server**. If you copied a database, a store you recognise should be there. In Terminal, `docker ps` should list both `homeserver` and `cotton-clay-tracker`.
+8. **Check it on the Mac.** In Safari open [http://127.0.0.1:43123](http://127.0.0.1:43123). You should see **This computer is the shared server**. If you copied a database, a store you recognise should be there. In Terminal, `docker ps` should still list `homeserver-caddy-1`, `homeserver-hello-1`, `homeserver-postgres-1`, plus the new `cotton-clay-tracker`.
 
 9. **Check it on a phone.** On the same Tailscale account, open `http://<this-mac’s-tailscale-name>:43123`. (The install printout lists the name.) Bookmark it. On studio Wi-Fi without Tailscale you can also try `http://<mac-name>.local:43123`. If macOS asks to allow incoming connections for Docker, allow it.
 
-10. **Optional: put it behind `homeserver`.** Until you add a hostname, `https://…ts.net` is still `homeserver`, not the tracker. That is expected. When you are ready, add a hostname on `homeserver` that reverse-proxies to `http://cotton-clay-tracker:43123` (not a path like `/consignment`). Snippets are in [Put the tracker behind homeserver](#6-put-the-tracker-behind-homeserver) below. Then set `CONSIGNMENT_HOMESERVER_URL` in `server/macos/host.env` and run `bash server/macos/start.sh`.
+10. **Optional: put it behind `homeserver-caddy-1`.** Until you add a hostname, `https://…ts.net` is still Caddy’s existing site, not the tracker. That is expected. When you are ready, add a hostname in the Caddyfile that reverse-proxies to `http://cotton-clay-tracker:43123` (not a path like `/consignment`). The pasteable snippet is in [Put the tracker behind Caddy](#6-put-the-tracker-behind-caddy) below. Then set `CONSIGNMENT_HOMESERVER_URL` in `server/macos/host.env` and run `bash server/macos/start.sh`.
 
 11. **Stop using any old copy.** If the tracker was running on another computer, leave that one stopped. Two servers become two different sets of stock.
 
-12. **Day to day.** Leave the Mac plugged in, logged in, and awake. Leave Docker Desktop and Tailscale running. Leave `homeserver` running. Phones use the bookmark from step 9 (or the `homeserver` hostname from step 10).
+12. **Day to day.** Leave the Mac plugged in, logged in, and awake. Leave Docker Desktop and Tailscale running. Leave the three `homeserver-*` containers running. Phones use the bookmark from step 9 (or the Caddy hostname from step 10).
 
 The sections below are the same steps with extra detail, plus backups, updates, and what to do when something is wrong.
 
-## How this fits next to homeserver, Docker, and Tailscale
+## How this fits next to the homeserver Compose stack
 
-- Compose project name is `cotton-clay`. The container is `cotton-clay-tracker`. It does **not** reuse the name `homeserver`.
-- `homeserver` is left running. The install never `docker stop`s it, never replaces its image, and never takes ports 80 or 443.
-- After start, both containers share a Docker network named `cotton-clay`. From inside `homeserver`, the tracker is `http://cotton-clay-tracker:43123`.
-- The only host port this stack binds is **43123** (so you can still open it on the Mac without going through `homeserver`).
+- Tracker Compose project is `cotton-clay`. Container `cotton-clay-tracker`. It does **not** reuse the names `homeserver`, `homeserver-caddy-1`, `homeserver-hello-1`, or `homeserver-postgres-1`.
+- Those three stay running. The install never `docker stop`s them, never replaces their images, and never takes ports **80**, **443**, or **5432**.
+- After start, `cotton-clay-tracker` joins the `homeserver` Compose network (usually `homeserver_default`), and `homeserver-caddy-1` is also attached to `cotton-clay`. From Caddy, the tracker is `http://cotton-clay-tracker:43123`.
+- The only host port the tracker binds is **43123**.
 - If something else already uses 43123, the install stops and names that process.
-- Tailscale HTTPS 443 stays with `homeserver`. The install does **not** run `tailscale serve` for the tracker when `homeserver` is present.
+- Host 80/443 stay with `homeserver-caddy-1`. The install does **not** run `tailscale serve` when that Caddy container is present.
 - Funnel is never turned on.
 
 ## 1. Prepare the MacBook
@@ -142,7 +148,7 @@ Do this on the MacBook Pro itself.
    - Settings → General: **Start Docker Desktop when you log in**.
    - Settings → General: use **VirtioFS** for file sharing (the current default). The database is a SQLite file on a bind mount; VirtioFS is the mode that behaves.
    - Leave Docker Desktop running. Do not pause or quit it while people need the tracker.
-   - Confirm your other stacks still look right: `docker ps`. You should already see `homeserver`. The tracker will add one more container named `cotton-clay-tracker`.
+   - Confirm your other stacks still look right: `docker ps`. You should already see `homeserver-caddy-1`, `homeserver-hello-1`, and `homeserver-postgres-1`. The tracker will add `cotton-clay-tracker`.
 
 8. Tailscale:
    - Open the Tailscale app and confirm this Mac is connected.
@@ -222,7 +228,7 @@ The first image build takes several minutes. The script:
 3. Writes `server/macos/host.env` (Tailscale URLs, timezone, bind-mount paths). That file stays on the Mac and is not committed.
 4. Builds the `cotton-clay-tracker:local` image and starts the Compose stack. Other projects keep running.
 5. Writes a backup of any database that is already there.
-6. Joins `homeserver` to the `cotton-clay` Docker network. Does not take Tailscale HTTPS 443.
+6. Joins `cotton-clay-tracker` to the homeserver Compose network (and attaches `homeserver-caddy-1` to `cotton-clay`). Does not take ports 80, 443, or 5432, and does not take Tailscale HTTPS 443.
 7. Registers two login helpers:
    - `com.cottonandclay.tracker` waits for Docker Desktop after login, then runs `docker compose up`.
    - `com.cottonandclay.backup` copies the repository every day at 2:15am, inside a one-shot container.
@@ -237,58 +243,43 @@ Run the script again any time you need to rebuild. It leaves an existing databas
 1. On the Mac, open `http://127.0.0.1:43123`.
 2. If you copied a database, confirm a store you recognise is there, with the quantities you expect. Open one report file and confirm the photo or PDF loads.
 3. If you started empty, add one real store and confirm it is still there after you refresh.
-4. Confirm `docker ps` shows both `homeserver` and `cotton-clay-tracker`.
-5. On this Mac, `http://127.0.0.1:43123` should load the tracker. That address bypasses `homeserver`.
-6. On a phone on Tailscale, `http://<tailscale-machine-name>:43123` also bypasses `homeserver` and is the address that works before you add a proxy hostname.
+4. Confirm `docker ps` still shows `homeserver-caddy-1`, `homeserver-hello-1`, `homeserver-postgres-1`, and the new `cotton-clay-tracker`.
+5. On this Mac, `http://127.0.0.1:43123` should load the tracker. That address bypasses Caddy.
+6. On a phone on Tailscale, `http://<tailscale-machine-name>:43123` also bypasses Caddy and is the address that works before you add a proxy hostname.
 7. On the same Wi-Fi without Tailscale, `http://cotton-clay.local:43123` still works.
-8. Add a hostname on `homeserver` (next section). Do not put the tracker under a path such as `/consignment` — the app’s `/api` routes would miss.
+8. Add a hostname on `homeserver-caddy-1` (next section). Do not put the tracker under a path such as `/consignment` — the app’s `/api` routes would miss.
 9. Leave the old computer’s server stopped. Two running copies become two different sets of stock.
 
 The home page should say **This computer is the shared server**.
 
-## 6. Put the tracker behind homeserver
+## 6. Put the tracker behind Caddy
 
-`homeserver` keeps 80/443. Add an upstream to the new container. Use a **hostname**, not a URL path.
+`homeserver-caddy-1` keeps host **80** and **443**. Postgres stays on **5432** inside the homeserver stack. Add a **hostname** in the Caddyfile that `homeserver-caddy-1` already uses — not a URL path.
 
 Upstream: `http://cotton-clay-tracker:43123`  
-Allow uploads of **20 MB** (shop report photos).  
-Forward `Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`.
+Allow uploads of **20 MB** (shop report photos).
 
-### Caddy
+Paste this site block into that Caddyfile. Replace the hostname with the one you want on the tailnet:
 
 ```caddy
-consignment.{$TAILNET} {
+consignment.wendys-mbp.YOUR-TAILNET.ts.net {
 	reverse_proxy cotton-clay-tracker:43123
+	request_body {
+		max_size 20MB
+	}
 }
 ```
 
-### nginx
+From the `homeserver` Compose folder, reload Caddy (do not recreate the container if you can reload):
 
-```nginx
-server {
-  server_name consignment.example.ts.net;
-  client_max_body_size 20m;
-  location / {
-    proxy_pass http://cotton-clay-tracker:43123;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-  }
-}
+```bash
+docker compose exec caddy caddy reload
 ```
-
-### Nginx Proxy Manager or a GUI
-
-Add a proxy host. Forward hostname `cotton-clay-tracker`, forward port `43123`, scheme `http`. Turn on Websockets if the UI offers it. Raise the max upload to 20 MB if that setting exists.
-
-### Traefik
-
-Point a router Host rule at service URL `http://cotton-clay-tracker:43123`. Do not set a path prefix.
 
 After the hostname works, put it in `server/macos/host.env` so the dashboard lists it first:
 
 ```bash
-CONSIGNMENT_HOMESERVER_URL=https://consignment.example.ts.net
+CONSIGNMENT_HOMESERVER_URL=https://consignment.wendys-mbp.YOUR-TAILNET.ts.net
 ```
 
 Then:
@@ -338,7 +329,7 @@ cd "$HOME/cotton-clay"
 bash server/macos/update.sh
 ```
 
-That pulls the latest code, backs up the repository, rebuilds the image, and restarts only the `cotton-clay` stack. `homeserver` and every other container stay up. The data repository path does not change.
+That pulls the latest code, backs up the repository, rebuilds the image, and restarts only the `cotton-clay` stack. `homeserver-caddy-1`, `homeserver-hello-1`, `homeserver-postgres-1`, and every other container stay up. The data repository path does not change.
 
 If this folder is not a git checkout, copy the new app files in yourself, leave Application Support alone, and run `bash server/macos/install.sh`.
 
@@ -346,7 +337,7 @@ If this folder is not a git checkout, copy the new app files in yourself, leave 
 
 - Leave the Mac plugged in, logged in, and awake (lid open, or lid closed with power and an external display).
 - Leave Docker Desktop running. Leave Tailscale connected.
-- Use the homeserver hostname bookmark on phones once it is set. Until then, use `http://<tailscale-name>:43123`.
+- Use the Caddy hostname bookmark on phones once it is set. Until then, use `http://<tailscale-name>:43123`.
 - Logs: `~/Library/Logs/CottonAndClay/tracker.err.log`, or:
 
   ```bash
@@ -360,7 +351,7 @@ If this folder is not a git checkout, copy the new app files in yourself, leave 
   bash server/macos/start.sh
   ```
 
-- Stop the tracker and keep the data (does not quit Docker Desktop, Tailscale, or `homeserver`):
+- Stop the tracker and keep the data (does not quit Docker Desktop, Tailscale, or the three `homeserver-*` containers):
 
   ```bash
   bash server/macos/uninstall.sh
@@ -372,12 +363,12 @@ If this folder is not a git checkout, copy the new app files in yourself, leave 
 
 **The phone cannot open the page.** The Mac is asleep, logged out, Docker Desktop is paused, or Tailscale is disconnected on the Mac or the phone. Wake the Mac, log in, wait until Docker is running, check the Tailscale menu extra, then try `http://127.0.0.1:43123` on the Mac itself.
 
-**HTTPS opens homeserver, not the tracker.** That is expected until you add a hostname on `homeserver` (section 6). Use `http://127.0.0.1:43123` on the Mac, or `http://<tailscale-name>:43123` on the tailnet, until that hostname exists.
+**HTTPS opens Caddy’s existing site, not the tracker.** That is expected until you add a hostname on `homeserver-caddy-1` (section 6). Use `http://127.0.0.1:43123` on the Mac, or `http://<tailscale-name>:43123` on the tailnet, until that hostname exists.
 
-**`docker ps` no longer shows homeserver.** The install does not stop it. Start `homeserver` from its own Compose folder, then `bash server/macos/start.sh` so the tracker can join its network again. Other stacks are also left alone; this install only starts project `cotton-clay`.
+**`docker ps` no longer shows homeserver-caddy-1 / hello / postgres.** The install does not stop them. Start the `homeserver` Compose stack from its own folder, then `bash server/macos/start.sh` so the tracker can join Caddy’s network again. This install only starts project `cotton-clay`.
 
 **Port 43123 is in use.** An old `npm run dev`, an old Node LaunchAgent, or another container is bound to it. Stop that, then install again.
 
 **The Mac restarted and the site is down.** Log in. Wait for Docker Desktop. The LaunchAgent retries until Docker answers, then starts the container. Tailscale needs to be connected as well.
 
-**A report photo will not upload from the phone.** Prefer the homeserver HTTPS hostname once it exists. The file picker still works on plain HTTP on port 43123. Files stay in the data repository on this Mac, not in iCloud. Raise the proxy upload limit to 20 MB if large photos fail.
+**A report photo will not upload from the phone.** Prefer the Caddy HTTPS hostname once it exists. The file picker still works on plain HTTP on port 43123. Files stay in the data repository on this Mac, not in iCloud. Raise the Caddy `request_body` max to 20 MB if large photos fail.
