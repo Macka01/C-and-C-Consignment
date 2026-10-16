@@ -1,5 +1,6 @@
 #!/bin/bash
-# Run on Wendys-MBP, usually via Tailscale SSH from the Mac Mini.
+# Run on Wendys-MBP, usually via ordinary ssh over Tailscale from the Mac Mini.
+# Do not use `tailscale ssh` — the Mac GUI app is sandboxed and cannot run it.
 # Only the tracker (cotton-clay / cotton-clay-tracker). Never stop or recreate
 # homeserver-caddy-1, homeserver-hello-1, or homeserver-postgres-1.
 # Never bind 80, 443, or 5432.
