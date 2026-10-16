@@ -1,10 +1,10 @@
 # Move the tracker onto the MacBook Pro
 
-The MacBook Pro is the one server. It already runs **Docker Desktop** and **Tailscale**. The tracker joins that setup instead of installing a second Node service.
+The MacBook Pro is the one server. It already runs **Docker Desktop**, **Tailscale**, and a container named **`homeserver`**. The tracker is a second container next to that, not a replacement for it.
 
-- **Web page server.** A Docker container named `cotton-clay-tracker` serves the tracker on port **43123**. Other Compose stacks on the Mac are left alone.
-- **Data repository.** The database and shop report files stay on the Mac disk, bind-mounted into the container. They are not stored in a Docker volume, and they are not in the browser.
-- **Who can open it.** Phones and shop computers on the **same Wi-Fi** can use the LAN address. Phones and laptops on **Tailscale** can use it from anywhere on the tailnet. Tailscale Funnel stays off — the tracker has no login, so it must not be on the public internet.
+- **Web page server.** A Docker container named `cotton-clay-tracker` serves the tracker on port **43123**. `homeserver` stays up and remains the front door (80/443 and Tailscale HTTPS).
+- **Data repository.** The database and shop report files stay on the Mac disk, bind-mounted into the tracker container. They are not stored in a Docker volume, and they are not in the browser.
+- **Who can open it.** On the Mac, `http://127.0.0.1:43123`. On Wi-Fi, the `.local` address on port 43123. Through `homeserver`, a hostname you add that reverse-proxies to `http://cotton-clay-tracker:43123`. Tailscale Funnel stays off — the tracker has no login, so it must not be on the public internet.
 
 After the move, record sales, transfers, invoices, and reports only on this Mac’s address. Stop the copy that was running on any other computer.
 
@@ -22,7 +22,7 @@ After the move, record sales, transfers, invoices, and reports only on this Mac�
 | Logs | `~/Library/Logs/CottonAndClay`, plus `docker compose logs tracker` |
 | Address on this Mac | `http://127.0.0.1:43123` |
 | Address on Wi-Fi | `http://<the-mac-name>.local:43123` |
-| Address on Tailscale | `https://<the-mac>.<tailnet>.ts.net` (HTTPS via Tailscale Serve), or `http://<tailscale-name>:43123` |
+| Address on Tailscale | `http://<tailscale-name>:43123`, or the HTTPS hostname you add on `homeserver` |
 
 The data repository sits outside the app folder and outside the image. Rebuilding the container copies new code in and leaves the database where it is.
 
@@ -30,13 +30,14 @@ A new repository starts empty. The sample shops (Harbour Linen and the others) a
 
 Node.js does not need to be installed on the Mac. The image has Node 22.
 
-## How this fits next to the Docker and Tailscale you already use
+## How this fits next to homeserver, Docker, and Tailscale
 
-- Compose project name is `cotton-clay`. `docker compose ps` in other folders is unchanged.
-- The only host port this stack binds is **43123**. It does not take 80 or 443 inside Docker.
-- If something else on the Mac already uses 43123, the install stops and names that process. Pick that process off, or stop an old tracker, then run the install again.
-- Tailscale stays the Mac app you already have. The install does not install a Tailscale *container*. It asks the Mac’s Tailscale to **Serve** HTTPS to `http://127.0.0.1:43123` on port 443 of the tailnet.
-- If Tailscale Serve is already using HTTPS 443 for another local service, the install leaves that mapping alone. Phones then use `http://<tailscale-name>:43123`.
+- Compose project name is `cotton-clay`. The container is `cotton-clay-tracker`. It does **not** reuse the name `homeserver`.
+- `homeserver` is left running. The install never `docker stop`s it, never replaces its image, and never takes ports 80 or 443.
+- After start, both containers share a Docker network named `cotton-clay`. From inside `homeserver`, the tracker is `http://cotton-clay-tracker:43123`.
+- The only host port this stack binds is **43123** (so you can still open it on the Mac without going through `homeserver`).
+- If something else already uses 43123, the install stops and names that process.
+- Tailscale HTTPS 443 stays with `homeserver`. The install does **not** run `tailscale serve` for the tracker when `homeserver` is present.
 - Funnel is never turned on.
 
 ## 1. Prepare the MacBook
@@ -66,7 +67,7 @@ Do this on the MacBook Pro itself.
    - Settings → General: **Start Docker Desktop when you log in**.
    - Settings → General: use **VirtioFS** for file sharing (the current default). The database is a SQLite file on a bind mount; VirtioFS is the mode that behaves.
    - Leave Docker Desktop running. Do not pause or quit it while people need the tracker.
-   - Confirm your other stacks still look right: `docker ps`. The tracker will add one container named `cotton-clay-tracker`.
+   - Confirm your other stacks still look right: `docker ps`. You should already see `homeserver`. The tracker will add one more container named `cotton-clay-tracker`.
 
 8. Tailscale:
    - Open the Tailscale app and confirm this Mac is connected.
@@ -145,7 +146,7 @@ The first image build takes several minutes. The script:
 3. Writes `server/macos/host.env` (Tailscale URLs, timezone, bind-mount paths). That file stays on the Mac and is not committed.
 4. Builds the `cotton-clay-tracker:local` image and starts the Compose stack. Other projects keep running.
 5. Writes a backup of any database that is already there.
-6. Asks Tailscale to Serve HTTPS to port 43123, unless 443 is already used by something else.
+6. Joins `homeserver` to the `cotton-clay` Docker network. Does not take Tailscale HTTPS 443.
 7. Registers two login helpers:
    - `com.cottonandclay.tracker` waits for Docker Desktop after login, then runs `docker compose up`.
    - `com.cottonandclay.backup` copies the repository every day at 2:15am, inside a one-shot container.
@@ -160,15 +161,70 @@ Run the script again any time you need to rebuild. It leaves an existing databas
 1. On the Mac, open `http://127.0.0.1:43123`.
 2. If you copied a database, confirm a store you recognise is there, with the quantities you expect. Open one report file and confirm the photo or PDF loads.
 3. If you started empty, add one real store and confirm it is still there after you refresh.
-4. Confirm `docker ps` shows `cotton-clay-tracker` and still shows your other containers.
-5. On a phone that has Tailscale connected to the same tailnet, open the HTTPS address the install printed (`https://<mac>.<tailnet>.ts.net`). Bookmark that. It works at home and away, as long as the Mac is awake.
-6. If HTTPS was not enabled (because 443 was already taken), open `http://<tailscale-machine-name>:43123`.
-7. On the same Wi-Fi without Tailscale, `http://cotton-clay.local:43123` still works. The dashboard lists every address the install knows.
-8. Leave the old computer’s server stopped. Two running copies become two different sets of stock.
+4. Confirm `docker ps` shows both `homeserver` and `cotton-clay-tracker`.
+5. On this Mac, `http://127.0.0.1:43123` should load the tracker. That address bypasses `homeserver`.
+6. On a phone on Tailscale, `http://<tailscale-machine-name>:43123` also bypasses `homeserver` and is the address that works before you add a proxy hostname.
+7. On the same Wi-Fi without Tailscale, `http://cotton-clay.local:43123` still works.
+8. Add a hostname on `homeserver` (next section). Do not put the tracker under a path such as `/consignment` — the app’s `/api` routes would miss.
+9. Leave the old computer’s server stopped. Two running copies become two different sets of stock.
 
-The home page should say **This computer is the shared server** and list the Tailscale and LAN addresses.
+The home page should say **This computer is the shared server**.
 
-## 6. Let the Mac accept connections
+## 6. Put the tracker behind homeserver
+
+`homeserver` keeps 80/443. Add an upstream to the new container. Use a **hostname**, not a URL path.
+
+Upstream: `http://cotton-clay-tracker:43123`  
+Allow uploads of **20 MB** (shop report photos).  
+Forward `Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`.
+
+### Caddy
+
+```caddy
+consignment.{$TAILNET} {
+	reverse_proxy cotton-clay-tracker:43123
+}
+```
+
+### nginx
+
+```nginx
+server {
+  server_name consignment.example.ts.net;
+  client_max_body_size 20m;
+  location / {
+    proxy_pass http://cotton-clay-tracker:43123;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+}
+```
+
+### Nginx Proxy Manager or a GUI
+
+Add a proxy host. Forward hostname `cotton-clay-tracker`, forward port `43123`, scheme `http`. Turn on Websockets if the UI offers it. Raise the max upload to 20 MB if that setting exists.
+
+### Traefik
+
+Point a router Host rule at service URL `http://cotton-clay-tracker:43123`. Do not set a path prefix.
+
+After the hostname works, put it in `server/macos/host.env` so the dashboard lists it first:
+
+```bash
+CONSIGNMENT_HOMESERVER_URL=https://consignment.example.ts.net
+```
+
+Then:
+
+```bash
+cd "$HOME/cotton-clay"
+bash server/macos/start.sh
+```
+
+Bookmark that HTTPS hostname on the phones. Until the proxy is in place, keep using `http://127.0.0.1:43123` on the Mac and `http://<tailscale-name>:43123` on the tailnet.
+
+## 7. Let the Mac accept connections
 
 Docker Desktop publishes 43123 on the Mac. The first time a phone connects on Wi-Fi, macOS may ask to allow incoming connections for Docker. Allow it.
 
@@ -176,7 +232,7 @@ Tailscale Serve uses the Tailscale interface. Phones on the tailnet do not need 
 
 If a phone on Wi-Fi cannot connect and the Mac can, check the firewall, that the phone is not on a guest network, and that Docker Desktop is running.
 
-## 7. Backups
+## 8. Backups
 
 The database and the report files exist on this Mac. A backup is a second copy of that repository.
 
@@ -199,22 +255,22 @@ The database and the report files exist on this Mac. A backup is a second copy o
 3. Start again: `bash server/macos/install.sh`
 4. Open the site and confirm the stores look like that day’s records.
 
-## 8. Update the app later
+## 9. Update the app later
 
 ```bash
 cd "$HOME/cotton-clay"
 bash server/macos/update.sh
 ```
 
-That pulls the latest code, backs up the repository, rebuilds the image, and restarts only the `cotton-clay` stack. Other containers stay up. The data repository path does not change.
+That pulls the latest code, backs up the repository, rebuilds the image, and restarts only the `cotton-clay` stack. `homeserver` and every other container stay up. The data repository path does not change.
 
 If this folder is not a git checkout, copy the new app files in yourself, leave Application Support alone, and run `bash server/macos/install.sh`.
 
-## 9. Day to day
+## 10. Day to day
 
 - Leave the Mac plugged in, logged in, and awake (lid open, or lid closed with power and an external display).
 - Leave Docker Desktop running. Leave Tailscale connected.
-- Use the Tailscale HTTPS bookmark on phones.
+- Use the homeserver hostname bookmark on phones once it is set. Until then, use `http://<tailscale-name>:43123`.
 - Logs: `~/Library/Logs/CottonAndClay/tracker.err.log`, or:
 
   ```bash
@@ -228,7 +284,7 @@ If this folder is not a git checkout, copy the new app files in yourself, leave 
   bash server/macos/start.sh
   ```
 
-- Stop the tracker and keep the data (does not quit Docker Desktop or Tailscale):
+- Stop the tracker and keep the data (does not quit Docker Desktop, Tailscale, or `homeserver`):
 
   ```bash
   bash server/macos/uninstall.sh
@@ -240,16 +296,12 @@ If this folder is not a git checkout, copy the new app files in yourself, leave 
 
 **The phone cannot open the page.** The Mac is asleep, logged out, Docker Desktop is paused, or Tailscale is disconnected on the Mac or the phone. Wake the Mac, log in, wait until Docker is running, check the Tailscale menu extra, then try `http://127.0.0.1:43123` on the Mac itself.
 
-**HTTPS opens the wrong site.** Tailscale Serve on port 443 was already used by another local service. Use `http://<tailscale-name>:43123`, or free 443 and run `bash server/macos/start.sh`.
+**HTTPS opens homeserver, not the tracker.** That is expected until you add a hostname on `homeserver` (section 6). Use `http://127.0.0.1:43123` on the Mac, or `http://<tailscale-name>:43123` on the tailnet, until that hostname exists.
 
-**The page loads and the stores are missing.** The container started before the database was copied, so it created an empty repository. Follow “If the Mac already created an empty database” in section 3.
-
-**Two different quantities on two devices.** They are talking to two servers. Stop every copy except this Mac’s container. Check the address in the phone’s bookmark.
-
-**`docker ps` no longer shows an old stack.** The install only starts project `cotton-clay`. If another stack is missing, it was not this install — start that project from its own folder again.
+**`docker ps` no longer shows homeserver.** The install does not stop it. Start `homeserver` from its own Compose folder, then `bash server/macos/start.sh` so the tracker can join its network again. Other stacks are also left alone; this install only starts project `cotton-clay`.
 
 **Port 43123 is in use.** An old `npm run dev`, an old Node LaunchAgent, or another container is bound to it. Stop that, then install again.
 
 **The Mac restarted and the site is down.** Log in. Wait for Docker Desktop. The LaunchAgent retries until Docker answers, then starts the container. Tailscale needs to be connected as well.
 
-**A report photo will not upload from the phone.** Stay on the Tailscale HTTPS address if you can. The file picker still works on plain HTTP on the LAN. Files stay in the data repository on this Mac, not in iCloud.
+**A report photo will not upload from the phone.** Prefer the homeserver HTTPS hostname once it exists. The file picker still works on plain HTTP on port 43123. Files stay in the data repository on this Mac, not in iCloud. Raise the proxy upload limit to 20 MB if large photos fail.

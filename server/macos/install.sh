@@ -181,10 +181,15 @@ if [[ -f "$HOST_ENV" ]]; then
     [[ -n "$item" ]] && echo "From a phone: $item"
   done
 fi
-echo "Docker stack: cotton-clay (container cotton-clay-tracker). Other Compose projects are left alone."
+echo "Docker stack: cotton-clay (container cotton-clay-tracker). Container homeserver is left running."
 echo "Data repository: $DATA_DIR"
 echo "Backups: $BACKUP_DIR"
 echo "Logs: $LOG_DIR"
+if find_homeserver >/dev/null; then
+  echo
+  echo "homeserver can reach the tracker at http://cotton-clay-tracker:43123"
+  echo "Add a hostname on homeserver for that upstream (not a /consignment path). Then put the public URL in server/macos/host.env as CONSIGNMENT_HOMESERVER_URL and run bash server/macos/start.sh"
+fi
 echo
 echo "Leave this Mac logged in, plugged in, and awake. Docker Desktop should start at login. The tracker container then starts with it."
 echo "Do not turn on Tailscale Funnel — the tracker has no login, so it should stay on your tailnet only."

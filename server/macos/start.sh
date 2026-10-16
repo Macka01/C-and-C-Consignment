@@ -11,5 +11,7 @@ if [[ ! -f "$HOST_ENV" ]]; then
   write_host_env "http"
 fi
 compose up -d --remove-orphans
+join_homeserver_network
 enable_tailscale_https || true
 compose up -d --remove-orphans
+join_homeserver_network

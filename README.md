@@ -45,7 +45,7 @@ npm run start
 
 ## MacBook Pro as the server
 
-The business runs on one MacBook Pro that already has Docker Desktop and Tailscale. That Mac serves the pages in a Compose container (`cotton-clay-tracker`) and keeps the data repository on its disk. Other Docker stacks stay as they are. Phones reach it on the tailnet (HTTPS via Tailscale Serve) and on the studio Wi-Fi. The steps are in [docs/mac-server.md](docs/mac-server.md).
+The business runs on one MacBook Pro that already has Docker Desktop, Tailscale, and a container named `homeserver`. The tracker is a second container (`cotton-clay-tracker`) on port 43123. `homeserver` stays the front door; add a hostname there that proxies to `http://cotton-clay-tracker:43123`. The data repository stays on the Mac disk. The steps are in [docs/mac-server.md](docs/mac-server.md).
 
 On the Mac, with Docker Desktop running, from the project folder:
 
