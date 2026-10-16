@@ -77,22 +77,29 @@ echo "Remote Login is on. This Mac stays the server. The Mini only opens a shell
 echo "There is no login on the tracker website."
 echo "Do not docker stop homeserver-caddy-1, homeserver-hello-1, or homeserver-postgres-1."
 echo
-echo "On the Mac Mini, Tailscale must be connected to the same tailnet. Then paste:"
+echo "On the Mac Mini, Tailscale must be connected to the same tailnet."
+echo "The short name ${mbp} will not resolve. Use the Tailscale address:"
 echo
-echo "  ssh ${user}@${mbp} \"bash ${remote} status\""
-if [[ -n "$dns" && "$dns" != "$mbp" ]]; then
-  echo "  ssh ${user}@${dns} \"bash ${remote} status\""
-fi
 if [[ -n "$ip4" ]]; then
   echo "  ssh ${user}@${ip4} \"bash ${remote} status\""
 fi
+if [[ -n "$dns" ]]; then
+  echo "  ssh ${user}@${dns} \"bash ${remote} status\""
+fi
+echo
+echo "On the Mini, if you do not have the address, run: tailscale status"
+echo "Copy the 100. address on the Wendys-MBP line."
 echo
 echo "Other commands (same ssh, different last word): status logs restart update backup stop"
 echo
 echo "  USER=${user}"
-echo "  MBP=${mbp}"
 if [[ -n "$ip4" ]]; then
   echo "  MBP_IP=${ip4}"
 fi
+if [[ -n "$dns" ]]; then
+  echo "  MBP_DNS=${dns}"
+fi
 echo "  REMOTE=${remote}"
-echo '  ssh "$USER@$MBP" "bash $REMOTE status"'
+if [[ -n "$ip4" ]]; then
+  echo '  ssh "$USER@$MBP_IP" "bash $REMOTE status"'
+fi

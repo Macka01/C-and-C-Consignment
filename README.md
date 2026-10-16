@@ -55,7 +55,7 @@ bash server/macos/install.sh
 
 Do not turn on Tailscale Funnel. There is no login on the tracker.
 
-To manage Wendys-MBP from the Mac Mini, use ordinary `ssh` over Tailscale (Remote Login). The Mac GUI cannot run Tailscale SSH. See [Manage from the Mac Mini](docs/mac-server.md#11-manage-from-the-mac-mini).
+To manage Wendys-MBP from the Mac Mini, use ordinary `ssh` to the MacBook’s Tailscale `100.` address (Remote Login). The short name `Wendys-MBP` will not resolve. The Mac GUI cannot run Tailscale SSH. See [Manage from the Mac Mini](docs/mac-server.md#11-manage-from-the-mac-mini).
 
 ## Where the data lives
 

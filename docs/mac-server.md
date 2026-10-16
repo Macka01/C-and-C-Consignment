@@ -29,7 +29,7 @@ After the move, record sales, transfers, invoices, and reports only on this Mac�
 | Address on this Mac | `http://127.0.0.1:43123` |
 | Address on Wi-Fi | `http://<the-mac-name>.local:43123` |
 | Address on Tailscale | `http://<tailscale-name>:43123`, or the HTTPS hostname you add on `homeserver-caddy-1` |
-| Manage from the Mac Mini | Ordinary `ssh` over Tailscale into Wendys-MBP; `server/macos/remote.sh` |
+| Manage from the Mac Mini | Ordinary `ssh` to Wendys-MBP’s Tailscale `100.` address; `server/macos/remote.sh` |
 
 The data repository sits outside the app folder and outside the image. Rebuilding the container copies new code in and leaves the database where it is.
 
@@ -110,7 +110,7 @@ Do this on the MacBook Pro itself. `homeserver-caddy-1`, `homeserver-hello-1`, a
 
 12. **Day to day.** Leave the Mac plugged in, logged in, and awake. Leave Docker Desktop and Tailscale running. Leave the three `homeserver-*` containers running. Phones use the bookmark from step 9 (or the Caddy hostname from step 10).
 
-13. **Optional: manage it from the Mac Mini.** One-time on Wendys-MBP: `bash server/macos/enable-remote.sh` (turns on macOS Remote Login). The Mini uses ordinary `ssh` over Tailscale — not `tailscale ssh`, which the Mac GUI app cannot run. Commands are in [Manage from the Mac Mini](#11-manage-from-the-mac-mini). The tracker website still has no login.
+13. **Optional: manage it from the Mac Mini.** One-time on Wendys-MBP: `bash server/macos/enable-remote.sh` (turns on macOS Remote Login). On the Mini, `ssh` to the Tailscale `100.` address from `tailscale status` — the short name `Wendys-MBP` will not resolve. Not `tailscale ssh`. Commands are in [Manage from the Mac Mini](#11-manage-from-the-mac-mini). The tracker website still has no login.
 
 The sections below are the same steps with extra detail, plus backups, updates, and what to do when something is wrong.
 
@@ -364,7 +364,7 @@ If this folder is not a git checkout, copy the new app files in yourself, leave 
 
 ## 11. Manage from the Mac Mini
 
-The tracker stays on **Wendys-MBP**. The Mini is only a remote keyboard. The Tailscale **Mac GUI is sandboxed** and cannot run Tailscale SSH (`The Tailscale SSH server does not run in sandboxed Tailscale GUI builds`). Use **macOS Remote Login** and ordinary `ssh` over the tailnet (MagicDNS name or `100.x` address). Do not replace the homeserver stack. Do not bind 80, 443, or 5432.
+The tracker stays on **Wendys-MBP**. The Mini is only a remote keyboard. The Tailscale **Mac GUI is sandboxed** and cannot run Tailscale SSH. Use **macOS Remote Login** and ordinary `ssh` to the MacBook’s Tailscale **`100.` address**. The short name `Wendys-MBP` is not in DNS (`ssh: Could not resolve hostname wendys-mbp`) — that is expected. Do not replace the homeserver stack. Do not bind 80, 443, or 5432.
 
 There is still **no login on the tracker website**. This SSH access is only so Steve can start/stop/update the container and read logs.
 
@@ -385,37 +385,27 @@ sudo systemsetup -setremotelogin on
 
 Or turn it on by hand: System Settings → General → Sharing → **Remote Login**, allow **stevemcintyre**. Leave Wendys-MBP plugged in, logged in, and awake, with Docker Desktop and Tailscale connected. Funnel stays off.
 
-### One time on the Mac Mini
+### On the Mac Mini
 
-1. Open Tailscale and connect to the **same tailnet**.
-2. Confirm you can see Wendys-MBP:
-
-   ```bash
-   tailscale status
-   ```
-
-   Use the MagicDNS name or the `100.` address from that list if the name does not resolve.
-
-### Day to day on the Mini
-
-Each command runs **on Wendys-MBP** and only touches `cotton-clay-tracker`. Use ordinary `ssh`, not `tailscale ssh`.
+Open Tailscale and connect to the **same tailnet**. The short name `Wendys-MBP` will not resolve. Get the `100.` address:
 
 ```bash
-ssh stevemcintyre@Wendys-MBP "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh status"
-ssh stevemcintyre@Wendys-MBP "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh logs"
-ssh stevemcintyre@Wendys-MBP "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh restart"
-ssh stevemcintyre@Wendys-MBP "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh update"
-ssh stevemcintyre@Wendys-MBP "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh backup"
-ssh stevemcintyre@Wendys-MBP "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh stop"
+export PATH="/Applications/Tailscale.app/Contents/MacOS:/usr/local/bin:/opt/homebrew/bin:$PATH"
+tailscale status
 ```
 
-`status` also lists `homeserver-caddy-1`, `homeserver-hello-1`, and `homeserver-postgres-1` (they must stay Up). `update` git-pulls and rebuilds the tracker only. `stop` uninstalls the tracker only.
-
-If `Wendys-MBP` does not resolve, use the MagicDNS name or the `100.` address from `tailscale status` on the Mini:
+Find the **Wendys-MBP** line and copy the `100.` address (four numbers). Then (replace with that address):
 
 ```bash
 ssh stevemcintyre@100.x.y.z "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh status"
+ssh stevemcintyre@100.x.y.z "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh logs"
+ssh stevemcintyre@100.x.y.z "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh restart"
+ssh stevemcintyre@100.x.y.z "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh update"
+ssh stevemcintyre@100.x.y.z "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh backup"
+ssh stevemcintyre@100.x.y.z "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh stop"
 ```
+
+Use ordinary `ssh`, not `tailscale ssh`. Each command runs **on Wendys-MBP** and only touches `cotton-clay-tracker`. `status` also lists the three homeserver containers (they must stay Up). The full MagicDNS name from `tailscale status` (ends in `.ts.net`) also works if you prefer a name.
 
 Never run `docker stop homeserver-caddy-1`, `homeserver-hello-1`, or `homeserver-postgres-1`. `remote.sh` refuses those names.
 
@@ -431,6 +421,6 @@ Never run `docker stop homeserver-caddy-1`, `homeserver-hello-1`, or `homeserver
 
 **The Mac restarted and the site is down.** Log in on Wendys-MBP. Wait for Docker Desktop. The LaunchAgent retries until Docker answers, then starts the container. Tailscale needs to be connected as well.
 
-**The Mini cannot SSH.** Do not use `tailscale ssh` (the Mac GUI cannot run it). On Wendys-MBP: Tailscale connected, Remote Login on for `stevemcintyre`, user still logged in. On the Mini: same tailnet, then `ssh stevemcintyre@Wendys-MBP` or `ssh stevemcintyre@100.x.y.z`.
+**The Mini cannot SSH / `Could not resolve hostname wendys-mbp`.** Expected for the short name. On the Mini, Tailscale connected, then `tailscale status` and `ssh stevemcintyre@100.x.y.z` with the address next to Wendys-MBP. Do not use `tailscale ssh`. On Wendys-MBP: Tailscale connected, Remote Login on for `stevemcintyre`, user still logged in.
 
 **A report photo will not upload from the phone.** Prefer the Caddy HTTPS hostname once it exists. The file picker still works on plain HTTP on port 43123. Files stay in the data repository on this Mac, not in iCloud. Raise the Caddy `request_body` max to 20 MB if large photos fail.
