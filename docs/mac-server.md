@@ -30,6 +30,81 @@ A new repository starts empty. The sample shops (Harbour Linen and the others) a
 
 Node.js does not need to be installed on the Mac. The image has Node 22.
 
+## Do you need Visual Studio?
+
+**No.** Do not install Visual Studio, Visual Studio Code, or Cursor on the Mac just to run this.
+
+This is a website that Docker already knows how to build. The Mac’s job is to stay awake, keep Docker Desktop and Tailscale running, and leave `homeserver` as it is. You use **Terminal** for a few commands, then Safari or a phone browser to open the tracker.
+
+You also do **not** need Node.js on the Mac. You only need git if you clone the project (if `git` is missing, macOS offers **Xcode Command Line Tools** — that is Apple’s small tools package, not Visual Studio).
+
+## Follow these steps in order
+
+Do this on the MacBook Pro itself. `homeserver` stays running the whole time.
+
+1. **Plug the Mac in** and leave it plugged in. Leave yourself logged in. Leave the lid open (or closed only if power and an external display are connected). A sleeping Mac means the phones lose the tracker.
+
+2. **Stop the Mac sleeping on power.** Open Terminal and paste this, then enter your Mac password:
+
+   ```bash
+   sudo pmset -c sleep 0 disksleep 0 displaysleep 10 womp 1 tcpkeepalive 1
+   ```
+
+   Optionally turn on “Start up automatically after a power failure” in Battery / Energy settings.
+
+3. **Confirm Docker Desktop is running.** The whale in the menu bar should be steady, not paused. In Docker Desktop → Settings → General, turn on **Start Docker Desktop when you log in**. In Terminal:
+
+   ```bash
+   docker ps
+   ```
+
+   You should already see a container named `homeserver`. Leave it running.
+
+4. **Confirm Tailscale is connected** on this Mac (menu extra is connected). On each iPhone, install Tailscale and log into the **same** tailnet. Leave Funnel off.
+
+5. **Get the app onto the Mac.** Keep the folder on the Mac’s disk, not in iCloud Drive. In Terminal:
+
+   ```bash
+   git clone https://origin.cursor.com/git/steve-mcintyre/c-c-consignment.git "$HOME/cotton-clay"
+   cd "$HOME/cotton-clay"
+   git checkout cursor/macbook-server-4781
+   ```
+
+   If `git` is not found, run `xcode-select --install`, finish that installer, then try the clone again.
+
+   You need the `cursor/macbook-server-4781` branch — that is the copy with Docker, Tailscale, and the `homeserver` wiring. Confirm the folder contains `compose.yaml` and `server/macos/install.sh`.
+
+6. **Move any real records in before the first start.** If another computer already has stores and sales, stop that old server first (Control-C in its Terminal). Copy its `data` folder (especially `consignment.db` and `data/reports/`) onto a USB stick or AirDrop, then:
+
+   ```bash
+   mkdir -p "$HOME/Library/Application Support/CottonAndClay/data/reports"
+   ```
+
+   Put `consignment.db` (and `consignment.db-wal` / `consignment.db-shm` if you have them) in `data/`. Put the report files in `data/reports/`.
+
+   If you have no real records yet, skip this step. The Mac will start with an empty tracker, not the sample shops.
+
+7. **Install and start the tracker.** Docker Desktop must still be running. `homeserver` must still be running.
+
+   ```bash
+   cd "$HOME/cotton-clay"
+   bash server/macos/install.sh
+   ```
+
+   The first build takes several minutes. When it finishes it prints addresses. `homeserver` is left running. The new container is `cotton-clay-tracker`.
+
+8. **Check it on the Mac.** In Safari open [http://127.0.0.1:43123](http://127.0.0.1:43123). You should see **This computer is the shared server**. If you copied a database, a store you recognise should be there. In Terminal, `docker ps` should list both `homeserver` and `cotton-clay-tracker`.
+
+9. **Check it on a phone.** On the same Tailscale account, open `http://<this-mac’s-tailscale-name>:43123`. (The install printout lists the name.) Bookmark it. On studio Wi-Fi without Tailscale you can also try `http://<mac-name>.local:43123`. If macOS asks to allow incoming connections for Docker, allow it.
+
+10. **Optional: put it behind `homeserver`.** Until you add a hostname, `https://…ts.net` is still `homeserver`, not the tracker. That is expected. When you are ready, add a hostname on `homeserver` that reverse-proxies to `http://cotton-clay-tracker:43123` (not a path like `/consignment`). Snippets are in [Put the tracker behind homeserver](#6-put-the-tracker-behind-homeserver) below. Then set `CONSIGNMENT_HOMESERVER_URL` in `server/macos/host.env` and run `bash server/macos/start.sh`.
+
+11. **Stop using any old copy.** If the tracker was running on another computer, leave that one stopped. Two servers become two different sets of stock.
+
+12. **Day to day.** Leave the Mac plugged in, logged in, and awake. Leave Docker Desktop and Tailscale running. Leave `homeserver` running. Phones use the bookmark from step 9 (or the `homeserver` hostname from step 10).
+
+The sections below are the same steps with extra detail, plus backups, updates, and what to do when something is wrong.
+
 ## How this fits next to homeserver, Docker, and Tailscale
 
 - Compose project name is `cotton-clay`. The container is `cotton-clay-tracker`. It does **not** reuse the name `homeserver`.
@@ -85,8 +160,9 @@ FileVault can stay on. Unlock the disk and log in after a restart.
 Clone the project, or copy the project folder. Name it `cotton-clay`. Keep it on the Mac’s disk, not in iCloud Drive.
 
 ```bash
-git clone <the repository URL> "$HOME/cotton-clay"
+git clone https://origin.cursor.com/git/steve-mcintyre/c-c-consignment.git "$HOME/cotton-clay"
 cd "$HOME/cotton-clay"
+git checkout cursor/macbook-server-4781
 ```
 
 Use a copy that contains `compose.yaml` and `server/macos/install.sh`.
