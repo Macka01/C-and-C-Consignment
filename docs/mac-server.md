@@ -387,12 +387,20 @@ Or turn it on by hand: System Settings → General → Sharing → **Remote Logi
 
 ### On the Mac Mini
 
-Open Tailscale and connect to the **same tailnet**. The short name `Wendys-MBP` will not resolve. Get the `100.` address:
+Tailscale must be **running and connected** on the Mini (same account as Wendys-MBP). If `tailscale status` says `Tailscale is stopped`:
+
+```bash
+open -a Tailscale
+```
+
+Then click **Connect** on the Tailscale icon in the menu bar (same login as the MacBook). Wait until it says connected. Then:
 
 ```bash
 export PATH="/Applications/Tailscale.app/Contents/MacOS:/usr/local/bin:/opt/homebrew/bin:$PATH"
 tailscale status
 ```
+
+The short name `Wendys-MBP` will not resolve. Get the `100.` address from that list.
 
 Find the **Wendys-MBP** line and copy the `100.` address (four numbers). Then (replace with that address):
 
@@ -421,6 +429,6 @@ Never run `docker stop homeserver-caddy-1`, `homeserver-hello-1`, or `homeserver
 
 **The Mac restarted and the site is down.** Log in on Wendys-MBP. Wait for Docker Desktop. The LaunchAgent retries until Docker answers, then starts the container. Tailscale needs to be connected as well.
 
-**The Mini cannot SSH / `Could not resolve hostname wendys-mbp`.** Expected for the short name. On the Mini, Tailscale connected, then `tailscale status` and `ssh stevemcintyre@100.x.y.z` with the address next to Wendys-MBP. Do not use `tailscale ssh`. On Wendys-MBP: Tailscale connected, Remote Login on for `stevemcintyre`, user still logged in.
+**The Mini cannot SSH / `Could not resolve hostname wendys-mbp` / `Tailscale is stopped`.** On the Mini: `open -a Tailscale`, click **Connect** in the menu bar, then `tailscale status`. Use the `100.` address next to Wendys-MBP (`ssh stevemcintyre@100.x.y.z`). The short name will not resolve. Do not use `tailscale ssh`. On Wendys-MBP: Tailscale connected, Remote Login on for `stevemcintyre`, user still logged in.
 
 **A report photo will not upload from the phone.** Prefer the Caddy HTTPS hostname once it exists. The file picker still works on plain HTTP on port 43123. Files stay in the data repository on this Mac, not in iCloud. Raise the Caddy `request_body` max to 20 MB if large photos fail.
