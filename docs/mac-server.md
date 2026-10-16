@@ -28,7 +28,7 @@ After the move, record sales, transfers, invoices, and reports only on this Mac�
 | Logs | `~/Library/Logs/CottonAndClay`, plus `docker compose logs tracker` |
 | Address on this Mac | `http://127.0.0.1:43123` |
 | Address on Wi-Fi | `http://<the-mac-name>.local:43123` |
-| Address on Tailscale | `http://<tailscale-name>:43123`, or the HTTPS hostname you add on `homeserver-caddy-1` |
+| Address on Tailscale | `http://100.73.158.74:43123` (Tailscale name **homeserver**), or the HTTPS hostname you add on `homeserver-caddy-1` |
 | Manage from the Mac Mini | Ordinary `ssh` to Tailscale name **homeserver** (`100.73.158.74`); `server/macos/remote.sh` |
 
 The data repository sits outside the app folder and outside the image. Rebuilding the container copies new code in and leaves the database where it is.
@@ -102,7 +102,7 @@ Do this on the MacBook Pro itself. `homeserver-caddy-1`, `homeserver-hello-1`, a
 
 8. **Check it on the Mac.** In Safari open [http://127.0.0.1:43123](http://127.0.0.1:43123). You should see **This computer is the shared server**. If you copied a database, a store you recognise should be there. In Terminal, `docker ps` should still list `homeserver-caddy-1`, `homeserver-hello-1`, `homeserver-postgres-1`, plus the new `cotton-clay-tracker`.
 
-9. **Check it on a phone.** On the same Tailscale account, open `http://<this-mac’s-tailscale-name>:43123`. (The install printout lists the name.) Bookmark it. On studio Wi-Fi without Tailscale you can also try `http://<mac-name>.local:43123`. If macOS asks to allow incoming connections for Docker, allow it.
+9. **Check it on a phone, iPad, or the Mini.** Each device needs Tailscale connected (same account as the MacBook). Then Safari: [http://100.73.158.74:43123](http://100.73.158.74:43123). Bookmark it. Steps are in [Open the tracker on Mini, iPad, iPhone](#12-open-the-tracker-on-mini-ipad-iphone). On studio Wi-Fi without Tailscale you can also try `http://<mac-name>.local:43123`. If macOS asks to allow incoming connections for Docker, allow it.
 
 10. **Optional: put it behind `homeserver-caddy-1`.** Until you add a hostname, `https://…ts.net` is still Caddy’s existing site, not the tracker. That is expected. When you are ready, add a hostname in the Caddyfile that reverse-proxies to `http://cotton-clay-tracker:43123` (not a path like `/consignment`). The pasteable snippet is in [Put the tracker behind Caddy](#6-put-the-tracker-behind-caddy) below. Then set `CONSIGNMENT_HOMESERVER_URL` in `server/macos/host.env` and run `bash server/macos/start.sh`.
 
@@ -340,7 +340,7 @@ If this folder is not a git checkout, copy the new app files in yourself, leave 
 
 - Leave the Mac plugged in, logged in, and awake (lid open, or lid closed with power and an external display).
 - Leave Docker Desktop running. Leave Tailscale connected.
-- Use the Caddy hostname bookmark on phones once it is set. Until then, use `http://<tailscale-name>:43123`.
+- Use the Caddy hostname bookmark on phones once it is set. Until then, use `http://100.73.158.74:43123`.
 - Logs: `~/Library/Logs/CottonAndClay/tracker.err.log`, or:
 
   ```bash
@@ -419,11 +419,37 @@ The first `ssh` asks `Are you sure you want to continue connecting` — type `ye
 
 Never run `docker stop homeserver-caddy-1`, `homeserver-hello-1`, or `homeserver-postgres-1`. `remote.sh` refuses those names.
 
+## 12. Open the tracker on Mini, iPad, iPhone
+
+The tracker is a **website** on Wendys-MBP. You do not install Cotton & Clay on the Mini, iPad, or iPhone. You do not use `ssh` to *use* the app — ssh is only to restart or update the MacBook.
+
+Every device needs **Tailscale connected** to the same account as the MacBook (`Macka01`). Then open Safari to:
+
+```
+http://100.73.158.74:43123
+```
+
+That is Tailscale name **homeserver** (the MacBook). Bookmark it. Leave Wendys-MBP plugged in, logged in, Docker Desktop and Tailscale on. Funnel stays off. There is no login on the site — anyone on this tailnet who opens that address can view and change stock.
+
+### Mac Mini
+
+Tailscale is already connected. In Safari (or Chrome), open [http://100.73.158.74:43123](http://100.73.158.74:43123). Bookmark it.
+
+### iPhone and iPad
+
+1. App Store → install **Tailscale**.
+2. Open Tailscale and sign in with the **same account** as the Macs (`Macka01`).
+3. Tap **Connect**. Wait until it shows connected and you can see **homeserver**.
+4. Open **Safari** and go to `http://100.73.158.74:43123`.
+5. Bookmark it. Optional: Share → **Add to Home Screen** so it sits like an app.
+
+If Safari cannot open the page: Tailscale is disconnected on that device or on Wendys-MBP, or the MacBook is asleep. Connect Tailscale, wake the Mac, then try again. Do not use `https` for this address until you add a Caddy hostname (section 6).
+
 ## When something is wrong
 
 **The phone cannot open the page.** The Mac is asleep, logged out, Docker Desktop is paused, or Tailscale is disconnected on the Mac or the phone. Wake the Mac, log in, wait until Docker is running, check the Tailscale menu extra, then try `http://127.0.0.1:43123` on the Mac itself.
 
-**HTTPS opens Caddy’s existing site, not the tracker.** That is expected until you add a hostname on `homeserver-caddy-1` (section 6). Use `http://127.0.0.1:43123` on the Mac, or `http://<tailscale-name>:43123` on the tailnet, until that hostname exists.
+**HTTPS opens Caddy’s existing site, not the tracker.** That is expected until you add a hostname on `homeserver-caddy-1` (section 6). Use `http://127.0.0.1:43123` on the Mac, or `http://100.73.158.74:43123` on the Mini / iPad / iPhone, until that hostname exists.
 
 **`docker ps` no longer shows homeserver-caddy-1 / hello / postgres.** The install does not stop them. Start the `homeserver` Compose stack from its own folder, then `bash server/macos/start.sh` so the tracker can join Caddy’s network again. This install only starts project `cotton-clay`.
 
