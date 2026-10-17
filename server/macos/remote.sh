@@ -73,14 +73,12 @@ case "$cmd" in
     echo
     ;;
   logs)
-    if [[ -f "$HOST_ENV" ]]; then
-      compose logs --tail 80 tracker
-    else
-      docker logs --tail 80 cotton-clay-tracker
-    fi
+    echo "Last tracker logs (not following)…" >&2
+    docker logs --tail 80 cotton-clay-tracker || true
     echo
     echo "LaunchAgent errors (if any):"
     tail -n 20 "$LOG_DIR/tracker.err.log" 2>/dev/null || true
+    echo "logs finished." >&2
     ;;
   start | restart)
     echo "Restarting cotton-clay-tracker only. Homeserver containers stay up." >&2
