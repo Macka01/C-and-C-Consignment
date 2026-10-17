@@ -21,8 +21,8 @@ After the move, record sales, transfers, invoices, and reports only on this Mac�
 | The app (code) | A folder on the Mac, for example `~/cotton-clay` |
 | The web server | Docker container `cotton-clay-tracker` (Compose project `cotton-clay`) |
 | Starts after login | Docker Desktop at login, then a small LaunchAgent that runs `docker compose up` |
-| The data repository | `~/Library/Application Support/CottonAndClay/data` on the Mac, mounted at `/data` in the container |
-| Database | `consignment.db` inside that folder |
+| The data repository | `/Users/stevemcintyre/Library/Application Support/CottonAndClay/data` on Wendys-MBP (SQLite, **not** `homeserver-postgres-1`) |
+| Database | `consignment.db` in that folder, bind-mounted at `/data` in the tracker container |
 | Report photos and PDFs | `reports/` inside that folder |
 | Daily backups | `~/Library/Application Support/CottonAndClay/backups` |
 | Logs | `~/Library/Logs/CottonAndClay`, plus `docker compose logs tracker` |
@@ -31,7 +31,7 @@ After the move, record sales, transfers, invoices, and reports only on this Mac�
 | Address on Tailscale | `http://100.73.158.74:43123` (Tailscale name **homeserver**), or the HTTPS hostname you add on `homeserver-caddy-1` |
 | Manage from the Mac Mini | Ordinary `ssh` to Tailscale name **homeserver** (`100.73.158.74`); `server/macos/remote.sh` |
 
-The data repository sits outside the app folder and outside the image. Rebuilding the container copies new code in and leaves the database where it is.
+The data repository sits on the Mac disk, outside the app folder and outside the image. It is **SQLite**, not the homeserver Postgres container. Rebuilding the tracker copies new code in and leaves `consignment.db` and `reports/` where they are.
 
 A new repository starts empty. The sample shops (Harbour Linen and the others) are only created when you run the app for development *without* Docker. If you copy an existing database across, the stores already in it come with it.
 
@@ -421,29 +421,36 @@ Never run `docker stop homeserver-caddy-1`, `homeserver-hello-1`, or `homeserver
 
 ## 12. Open the tracker on Mini, iPad, iPhone
 
-The tracker is a **website** on Wendys-MBP. You do not install Cotton & Clay on the Mini, iPad, or iPhone. You do not use `ssh` to *use* the app — ssh is only to restart or update the MacBook.
+The tracker is a **website** on Wendys-MBP. You do not install Cotton & Clay. `ssh` is only to restart or update the MacBook.
 
-Every device needs **Tailscale connected** to the same account as the MacBook (`Macka01`). Then open Safari to:
+**Data** stays on that Mac: `/Users/stevemcintyre/Library/Application Support/CottonAndClay/data/consignment.db` (SQLite). `homeserver-postgres-1` is not used.
 
+To use it **away from home Wi-Fi without Tailscale on the phone/iPad**, the URL has to be on the public internet. That is only safe with a shared access code, then Tailscale Funnel (phones open Safari only). Until Funnel is on, keep using Tailscale on those devices (`http://100.73.158.74:43123`).
+
+### Home-screen icon (iPhone / iPad)
+
+After the tracker loads in Safari: Share → **Add to Home Screen**. Name it Cotton & Clay. It opens as a standalone app with the pitcher icon.
+
+### Away from home, no Tailscale on phones (after update)
+
+On Wendys-MBP, `git pull`, then put a code in `server/macos/host.env`:
+
+```bash
+cd /Users/stevemcintyre/cotton-clay
+# in host.env: CONSIGNMENT_ACCESS_CODE=pick-a-code-you-will-remember
+bash server/macos/start.sh
+bash server/macos/enable-public.sh
 ```
-http://100.73.158.74:43123
-```
 
-That is Tailscale name **homeserver** (the MacBook). Bookmark it. Leave Wendys-MBP plugged in, logged in, Docker Desktop and Tailscale on. Funnel stays off. There is no login on the site — anyone on this tailnet who opens that address can view and change stock.
+`enable-public.sh` does not take ports 80, 443, or 5432. It prints an `https://…ts.net` address. On Mini / iPad / iPhone: Safari to that address, enter the code, then Add to Home Screen. The Tailscale **app** is not required on those devices once Funnel is working.
 
-### Mac Mini
+If Funnel cannot start (Mac GUI limits), keep Tailscale connected on the device and use `http://100.73.158.74:43123` as today.
 
-Tailscale is already connected. In Safari (or Chrome), open [http://100.73.158.74:43123](http://100.73.158.74:43123). Bookmark it.
+### Until then (works now)
 
-### iPhone and iPad
+Mini already has Tailscale. Safari: [http://100.73.158.74:43123](http://100.73.158.74:43123).
 
-1. App Store → install **Tailscale**.
-2. Open Tailscale and sign in with the **same account** as the Macs (`Macka01`).
-3. Tap **Connect**. Wait until it shows connected and you can see **homeserver**.
-4. Open **Safari** and go to `http://100.73.158.74:43123`.
-5. Bookmark it. Optional: Share → **Add to Home Screen** so it sits like an app.
-
-If Safari cannot open the page: Tailscale is disconnected on that device or on Wendys-MBP, or the MacBook is asleep. Connect Tailscale, wake the Mac, then try again. Do not use `https` for this address until you add a Caddy hostname (section 6).
+iPhone / iPad: Tailscale app, same `Macka01` account, Connect, then that same address.
 
 ## When something is wrong
 

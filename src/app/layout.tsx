@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist_Mono, Outfit } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import { Toaster } from "@/components/ui/sonner";
@@ -20,12 +20,32 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: "Cotton & Clay",
   title: {
-    default: "Consignment tracker",
+    default: "Cotton & Clay",
     template: "%s · Cotton & Clay",
   },
   description:
     "Shared tracker for Cotton and Clay stock, sales, invoices, and consignee reports.",
+  appleWebApp: {
+    capable: true,
+    title: "Cotton & Clay",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#C45A32",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

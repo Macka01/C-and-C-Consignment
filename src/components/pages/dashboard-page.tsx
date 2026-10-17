@@ -19,7 +19,7 @@ export function DashboardPage() {
       ? "This computer is the shared server"
       : "Sample shelves, ready to edit";
   const bannerBody = sharedServer
-    ? "Stores, stock, sales, invoices, and shop reports are kept in the data repository on this computer. Every phone and shop computer that opens an address below — on Tailscale or on the studio Wi-Fi — sees those same records."
+    ? "Stores, stock, sales, invoices, and shop reports live in the data repository on this Mac: Library/Application Support/CottonAndClay/data (SQLite file consignment.db, not the homeserver Postgres). On iPhone or iPad: Safari → Share → Add to Home Screen."
     : network.loading
       ? "Stores, stock, sales, invoices, and shop reports are kept on this computer. Every phone and shop computer that opens this server sees the same records."
       : "Harbour Linen, Terrigal Home Room, Gosford Goods, and Woy Woy Window are made-up shops so you can try the tracker. Change a phone number, record a sale, or delete a store. Nothing is locked. Every phone and shop computer that opens this server sees the same records.";

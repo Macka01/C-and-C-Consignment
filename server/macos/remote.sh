@@ -45,6 +45,15 @@ case "$cmd" in
     else
       echo "  health  http://127.0.0.1:43123/api/health  down"
     fi
+    echo "data repository (SQLite on the Mac disk, not homeserver-postgres-1):"
+    echo "  $DATA_DIR"
+    if [[ -f "$DATA_DIR/consignment.db" ]]; then
+      ls -lh "$DATA_DIR/consignment.db" | awk '{ print "  consignment.db  " $5 }'
+    else
+      echo "  consignment.db  missing"
+    fi
+    echo "  reports  $DATA_DIR/reports"
+    echo "  backups  $BACKUP_DIR"
     homeserver_still_up
     ;;
   health)

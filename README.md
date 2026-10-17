@@ -53,16 +53,16 @@ On the Mac, with Docker Desktop running, from the project folder:
 bash server/macos/install.sh
 ```
 
-Do not turn on Tailscale Funnel. There is no login on the tracker.
+The Mac server’s data repository is SQLite at `~/Library/Application Support/CottonAndClay/data` (`consignment.db` plus `reports/`). That is **not** `homeserver-postgres-1`. Turn on Funnel only after `CONSIGNMENT_ACCESS_CODE` is set (`server/macos/enable-public.sh`).
 
-To **use** the tracker from the Mac Mini, iPad, or iPhone: Tailscale connected, then Safari to [http://100.73.158.74:43123](http://100.73.158.74:43123). See [Open the tracker on Mini, iPad, iPhone](docs/mac-server.md#12-open-the-tracker-on-mini-ipad-iphone).
+To **use** the tracker from Mini / iPad / iPhone away from home: a shared access code plus Tailscale Funnel (`server/macos/enable-public.sh`), then Safari → Add to Home Screen. Until Funnel is on, Tailscale on the device and [http://100.73.158.74:43123](http://100.73.158.74:43123) still works. See [Open the tracker on Mini, iPad, iPhone](docs/mac-server.md#12-open-the-tracker-on-mini-ipad-iphone).
 
 To **manage** Wendys-MBP from the Mac Mini, use ordinary `ssh` to Tailscale name **homeserver** at `100.73.158.74` (Remote Login). The macOS name `Wendys-MBP` will not resolve. The Mac GUI cannot run Tailscale SSH. See [Manage from the Mac Mini](docs/mac-server.md#11-manage-from-the-mac-mini).
 
 ## Where the data lives
 
 - Development: `data/consignment.db` and `data/reports/` inside the project folder (created on first launch)
-- Mac server: `~/Library/Application Support/CottonAndClay/data/` when `CONSIGNMENT_DATA_DIR` is set
+- Mac server: `/Users/stevemcintyre/Library/Application Support/CottonAndClay/data/` (`consignment.db`, `reports/`). Not Postgres.
 
 Those paths are on the computer running the server. Every device reads and writes that one copy. Two people can record a sale or a transfer at the same time; each change is applied to the current quantity, and a transfer out or sale will not take stock below zero.
 

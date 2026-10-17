@@ -59,7 +59,7 @@ function Brand() {
 function SharedNote() {
   return (
     <p className="text-xs leading-5 text-muted-foreground">
-      One shared tracker. Phones and shop computers see the same stock. There is no login — anyone with the address can make changes.
+      One shared tracker. Phones and shop computers see the same stock. The database is the SQLite file on this Mac, not homeserver Postgres.
     </p>
   );
 }
@@ -68,6 +68,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const current = NAV.find((item) => isActive(pathname, item.href));
+
+  if (pathname === "/login") {
+    return <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>;
+  }
 
   return (
     <div className="min-h-screen">
