@@ -9,7 +9,7 @@ set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd)/common.sh"
 
 echo "Starting cotton-clay-tracker only. Leaving homeserver-caddy-1, homeserver-hello-1, and homeserver-postgres-1 as they are." >&2
-wait_for_docker 60
+wait_for_docker 20
 if [[ ! -f "$HOST_ENV" ]]; then
   write_host_env "http"
 fi

@@ -22,30 +22,54 @@ xml_escape() {
   printf '%s' "$value"
 }
 
+run_timeout() {
+  local seconds=$1
+  shift
+  python3 -c 'import subprocess,sys
+secs=int(sys.argv[1])
+cmd=sys.argv[2:]
+try:
+    r=subprocess.run(cmd, timeout=secs, capture_output=True, start_new_session=True)
+except subprocess.TimeoutExpired:
+    sys.exit(124)
+sys.stdout.buffer.write(r.stdout)
+sys.stderr.buffer.write(r.stderr)
+sys.exit(r.returncode)
+' "$seconds" "$@"
+}
+
+docker_cmd() {
+  run_timeout 5 docker "$@"
+}
+
 compose() {
-  if docker compose version >/dev/null 2>&1; then
+  if docker_cmd compose version >/dev/null 2>&1; then
     docker compose --project-directory "$APP_DIR" --project-name "$compose_project" --env-file "$HOST_ENV" -f "$APP_DIR/compose.yaml" "$@"
   elif command -v docker-compose >/dev/null 2>&1; then
     docker-compose --project-directory "$APP_DIR" --project-name "$compose_project" --env-file "$HOST_ENV" -f "$APP_DIR/compose.yaml" "$@"
   else
-    echo "Docker Compose is not installed. Open Docker Desktop and try again."
+    echo "Docker Compose is not installed. Open Docker Desktop and try again." >&2
     return 1
   fi
 }
 
 wait_for_docker() {
-  local tries=${1:-60}
-  local i
-  echo "Waiting for Docker Desktop on Wendys-MBP…" >&2
+  local tries=${1:-20}
+  local i rc
+  echo "Waiting for Docker CLI. docker info can hang on Mac — using docker ps with a 5s timeout." >&2
   for i in $(seq 1 "$tries"); do
-    if docker info >/dev/null 2>&1; then
-      echo "Docker Desktop is running." >&2
+    echo "  Docker check $i/$tries…" >&2
+    if docker_cmd ps >/dev/null 2>&1; then
+      echo "Docker is ready (docker ps succeeded)." >&2
       return 0
     fi
-    echo "  still waiting ($i/$tries). On Wendys-MBP: wake it, stay logged in, open Docker Desktop." >&2
-    sleep 5
+    rc=$?
+    if [[ "$rc" -eq 124 ]]; then
+      echo "  docker ps timed out. Restart Docker Desktop from the whale menu if this keeps happening." >&2
+    fi
+    sleep 3
   done
-  echo "Docker Desktop did not become ready. Start Docker Desktop on Wendys-MBP, wait until it says it is running, and try again." >&2
+  echo "Docker CLI is not answering. Restart Docker Desktop from the whale (homeserver containers should come back by themselves). Do not docker stop homeserver-caddy-1, homeserver-hello-1, or homeserver-postgres-1." >&2
   return 1
 }
 
