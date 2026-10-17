@@ -36,13 +36,16 @@ compose() {
 wait_for_docker() {
   local tries=${1:-60}
   local i
+  echo "Waiting for Docker Desktop on Wendys-MBP…"
   for i in $(seq 1 "$tries"); do
     if docker info >/dev/null 2>&1; then
+      echo "Docker Desktop is running."
       return 0
     fi
+    echo "  still waiting ($i/$tries). On Wendys-MBP: wake it, stay logged in, open Docker Desktop."
     sleep 5
   done
-  echo "Docker Desktop did not become ready. Start Docker Desktop, wait until it says it is running, and try again."
+  echo "Docker Desktop did not become ready. Start Docker Desktop on Wendys-MBP, wait until it says it is running, and try again."
   return 1
 }
 
