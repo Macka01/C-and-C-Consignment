@@ -77,7 +77,7 @@ case "$cmd" in
     tail -n 20 "$LOG_DIR/tracker.err.log" 2>/dev/null || true
     ;;
   start | restart)
-    echo "Restarting the tracker (this can take a minute; password will not echo)…"
+    echo "Restarting cotton-clay-tracker only. Homeserver containers stay up." >&2
     bash "$APP_DIR/server/macos/start.sh"
     homeserver_still_up
     ;;
