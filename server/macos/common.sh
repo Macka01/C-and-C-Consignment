@@ -59,24 +59,42 @@ host_timezone() {
   printf '%s\n' "Australia/Sydney"
 }
 
+tailscale_cmd() {
+  python3 -c 'import subprocess,sys
+try:
+    r=subprocess.run(sys.argv[1:], timeout=8, capture_output=True)
+except subprocess.TimeoutExpired:
+    sys.exit(124)
+sys.stdout.buffer.write(r.stdout)
+sys.stderr.buffer.write(r.stderr)
+sys.exit(r.returncode)
+' "$@"
+}
+
 tailscale_ready() {
-  command -v tailscale >/dev/null 2>&1 && tailscale status >/dev/null 2>&1
+  command -v tailscale >/dev/null 2>&1 && tailscale_cmd tailscale status >/dev/null 2>&1
 }
 
 tailscale_dns_name() {
-  tailscale status --json 2>/dev/null | python3 -c 'import json,sys
-j=json.load(sys.stdin)
+  tailscale_cmd tailscale status --json 2>/dev/null | python3 -c 'import json,sys
+raw=sys.stdin.read().strip()
+if not raw:
+    raise SystemExit(0)
+j=json.loads(raw)
 print((j.get("Self") or {}).get("DNSName") or "", end="")' | sed 's/\.$//'
 }
 
 tailscale_hostname() {
-  tailscale status --json 2>/dev/null | python3 -c 'import json,sys
-j=json.load(sys.stdin)
+  tailscale_cmd tailscale status --json 2>/dev/null | python3 -c 'import json,sys
+raw=sys.stdin.read().strip()
+if not raw:
+    raise SystemExit(0)
+j=json.loads(raw)
 print((j.get("Self") or {}).get("HostName") or "", end="")'
 }
 
 tailscale_ipv4() {
-  tailscale ip -4 2>/dev/null | head -n 1
+  tailscale_cmd tailscale ip -4 2>/dev/null | head -n 1
 }
 
 lan_ipv4() {
