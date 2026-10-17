@@ -54,11 +54,14 @@ compose() {
 }
 
 wait_for_docker() {
-  local tries=${1:-20}
-  local i rc
-  echo "Waiting for Docker CLI. docker info can hang on Mac — using docker ps with a 5s timeout." >&2
-  for i in $(seq 1 "$tries"); do
-    echo "  Docker check $i/$tries…" >&2
+  local tries i rc
+  tries=20
+  if [[ -n "${1-}" ]]; then
+    tries="$1"
+  fi
+  echo "Waiting for Docker CLI. docker info can hang on Mac -- using docker ps with a 5s timeout." >&2
+  for i in $(seq 1 "${tries}"); do
+    echo "  Docker check ${i}/${tries}..." >&2
     if docker_cmd ps >/dev/null 2>&1; then
       echo "Docker is ready (docker ps succeeded)." >&2
       return 0
