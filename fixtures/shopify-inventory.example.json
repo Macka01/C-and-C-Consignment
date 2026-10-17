@@ -1,0 +1,92 @@
+{
+  "locations": [
+    {
+      "locationId": "gid://shopify/Location/1",
+      "locationName": "Harbour Linen",
+      "items": [
+        {
+          "sku": "HLB-BOWL-DE",
+          "title": "Flax Serve Bowl",
+          "variantTitle": "Duck Egg",
+          "displayName": "Flax Serve Bowl — Duck Egg",
+          "onHand": 11
+        },
+        {
+          "sku": "HLB-MUG-KH",
+          "title": "Flax Mug",
+          "variantTitle": "Khaki",
+          "displayName": "Flax Mug — Khaki",
+          "onHand": 4
+        },
+        {
+          "sku": "HLB-BOWL-SG",
+          "title": "Everyday Bowl",
+          "variantTitle": "Speckle Grey",
+          "displayName": "Everyday Bowl — Speckle Grey",
+          "onHand": 5
+        }
+      ]
+    },
+    {
+      "locationId": "gid://shopify/Location/2",
+      "locationName": "Terrigal Home Room",
+      "items": [
+        {
+          "sku": "THR-VASE-DE",
+          "title": "Flax Vue Vase",
+          "variantTitle": "Duck Egg",
+          "displayName": "Flax Vue Vase — Duck Egg",
+          "onHand": 7
+        },
+        {
+          "sku": "THR-BOWL-GL",
+          "title": "Everyday Bowl",
+          "variantTitle": "Grit Large",
+          "displayName": "Everyday Bowl — Grit Large",
+          "onHand": 6
+        },
+        {
+          "sku": "THR-BUNT-NAT",
+          "title": "Bunting",
+          "variantTitle": "Antique Lace Natural",
+          "displayName": "Bunting — Antique Lace Natural",
+          "onHand": 5
+        }
+      ]
+    },
+    {
+      "locationId": "gid://shopify/Location/3",
+      "locationName": "Gosford Goods",
+      "items": [
+        {
+          "sku": "GG-PORC-LH",
+          "title": "Porcelain Bowl",
+          "variantTitle": "Little Houses",
+          "displayName": "Porcelain Bowl — Little Houses",
+          "onHand": 8
+        },
+        {
+          "sku": "GG-WOVEN-T",
+          "title": "African Woven Bowl",
+          "variantTitle": "Terracotta",
+          "displayName": "African Woven Bowl — Terracotta",
+          "onHand": 8
+        },
+        {
+          "sku": "GG-MUG-KH",
+          "title": "Flax Mug",
+          "variantTitle": "Khaki",
+          "displayName": "Flax Mug — Khaki",
+          "onHand": 9
+        },
+        {
+          "sku": "GG-BOWL-DE",
+          "title": "Flax Serve Bowl",
+          "variantTitle": "Duck Egg",
+          "displayName": "Flax Serve Bowl — Duck Egg",
+          "onHand": 4
+        }
+      ]
+    }
+  ]
+}

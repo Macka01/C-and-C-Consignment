@@ -17,6 +17,7 @@ import { MovementList } from "@/components/movement-list";
 import { InvoiceList } from "@/components/invoice-list";
 import { InvoiceFormDialog } from "@/components/invoice-form-dialog";
 import { ReportPanel } from "@/components/report-panel";
+import { ShopifyCompare, ShopifyStockNote } from "@/components/shopify-qty";
 import { api } from "@/lib/api-client";
 import { useResource } from "@/lib/use-resource";
 import { commissionLabel, formatMoney, rentLabel } from "@/lib/format";
@@ -85,9 +86,12 @@ export function StoreDetailPage() {
             </TabsList>
             <TabsContent value="stock" className="mt-4 grid gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="max-w-xl text-sm text-muted-foreground">
-                  Quantity is shared. A sale or transfer saved here updates the shelf for everyone else. A transfer out or sale will not take the count below zero.
-                </p>
+                <div className="grid gap-2">
+                  <p className="max-w-xl text-sm text-muted-foreground">
+                    Quantity is shared. A sale or transfer saved here updates the shelf for everyone else. A transfer out or sale will not take the count below zero.
+                  </p>
+                  <ShopifyStockNote shopify={detail.data.shopify} />
+                </div>
                 <Button className="h-10" onClick={() => setPlacing(true)}>
                   Place a product
                 </Button>
@@ -233,8 +237,11 @@ function StockCard({
             {line.productGroup} · retail {formatMoney(line.retailPrice)}
           </p>
         </div>
-        <p className="font-heading text-3xl leading-none">{line.quantity}</p>
+        <p className="font-heading text-3xl leading-none" title="Our quantity on hand">
+          {line.quantity}
+        </p>
       </div>
+      <ShopifyCompare line={line} />
       <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
         <div className="grid gap-1.5">
           <label className="text-sm font-medium" htmlFor={`code-${line.id}`}>

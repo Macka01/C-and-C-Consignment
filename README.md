@@ -76,8 +76,30 @@ Sample stores, products, transfers, sales, one invoice, and one report are loade
 
 Uploads accept JPEG, PNG, WEBP, HEIC, and PDF, up to 20 MB. Files stay on this server’s disk. They are not sent to a cloud store.
 
+## Shopify qty on hand
+
+Stock cards can show **Shopify qty on hand** and a **variance** (Shopify minus our quantity). Shopify is display-only. Sales, transfers, and our quantity stay in this app.
+
+Match a store to a Shopify location by name. Match a product by consignee code to SKU, or by product name if the code is empty. A custom app Admin API token needs `read_inventory`, `read_locations`, and `read_products`.
+
+```bash
+# development
+SHOPIFY_SHOP=your-store.myshopify.com
+SHOPIFY_ACCESS_TOKEN=shpat_...
+```
+
+On the Mac, add the same two lines to `server/macos/host.env`, then:
+
+```bash
+cd /Users/stevemcintyre/cotton-clay
+bash server/macos/start.sh
+```
+
+`start.sh` keeps those two values when it rewrites `host.env`.
+
 ## Limits
 
 - No user accounts, roles, or audit of who changed a row.
 - Data exists only on the machine that runs the app. On the Mac server, back up the data repository with `bash server/macos/backup.sh` (the install also schedules a daily copy).
 - “This month” on the dashboard follows the server’s clock.
+- Shopify figures are a snapshot. We do not overwrite our quantity from Shopify.

@@ -22,6 +22,13 @@ export type Product = {
   storeCount: number;
 };
 
+export type ShopifyMatch = "matched" | "no_location" | "no_product" | "unavailable";
+
+export type ShopifyStockStatus = {
+  configured: boolean;
+  error: string | null;
+};
+
 export type StockLine = {
   id: number;
   storeId: number;
@@ -33,6 +40,9 @@ export type StockLine = {
   description: string;
   retailPrice: number;
   storeName?: string;
+  shopifyQtyOnHand: number | null;
+  variance: number | null;
+  shopifyMatch: ShopifyMatch;
 };
 
 export type Movement = {
@@ -103,10 +113,12 @@ export type StoreDetail = {
   movements: Movement[];
   invoices: Invoice[];
   reports: ReportRecord[];
+  shopify: ShopifyStockStatus;
 };
 
 export type ProductDetail = {
   product: Product;
   stock: StockLine[];
   movements: Movement[];
+  shopify: ShopifyStockStatus;
 };

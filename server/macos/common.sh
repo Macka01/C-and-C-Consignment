@@ -297,7 +297,7 @@ join_urls() {
 }
 
 write_host_env() {
-  local tz https_url magic_http ip_http lan_http bonjour homeserver_url homeserver_name homeserver_net access_code
+  local tz https_url magic_http ip_http lan_http bonjour homeserver_url homeserver_name homeserver_net access_code shopify_shop shopify_token
   tz="$(host_timezone)"
   https_url=""
   magic_http=""
@@ -308,6 +308,8 @@ write_host_env() {
   homeserver_name="$(find_homeserver_caddy 2>/dev/null || host_env_value HOMESERVER_CONTAINER || true)"
   homeserver_net="$(homeserver_compose_network 2>/dev/null || host_env_value HOMESERVER_NETWORK || true)"
   access_code="$(host_env_value CONSIGNMENT_ACCESS_CODE || true)"
+  shopify_shop="$(host_env_value SHOPIFY_SHOP || true)"
+  shopify_token="$(host_env_value SHOPIFY_ACCESS_TOKEN || true)"
   if tailscale_ready; then
     local dns host ip
     dns="$(tailscale_dns_name)"
@@ -343,6 +345,8 @@ CONSIGNMENT_BONJOUR=${bonjour}
 CONSIGNMENT_PUBLIC_URLS=${urls}
 CONSIGNMENT_HOMESERVER_URL=${homeserver_url}
 CONSIGNMENT_ACCESS_CODE=${access_code}
+SHOPIFY_SHOP=${shopify_shop}
+SHOPIFY_ACCESS_TOKEN=${shopify_token}
 HOMESERVER_CONTAINER=${homeserver_name}
 HOMESERVER_NETWORK=${homeserver_net}
 EOF

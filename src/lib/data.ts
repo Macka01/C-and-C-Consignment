@@ -19,6 +19,8 @@ import type {
   StoreDetail,
 } from "@/lib/types";
 
+const unsetShopify = { configured: false, error: null };
+
 type StoreRow = {
   id: number;
   name: string;
@@ -132,6 +134,9 @@ function mapStock(row: StockRow): StockLine {
     description: row.description,
     retailPrice: row.retail_price,
     storeName: row.store_name ?? undefined,
+    shopifyQtyOnHand: null,
+    variance: null,
+    shopifyMatch: "unavailable",
   };
 }
 
@@ -572,6 +577,7 @@ export function getStoreDetail(id: number): StoreDetail {
     movements: listMovements({ storeId: id }),
     invoices: listInvoices(id),
     reports: listReports({ storeId: id }),
+    shopify: unsetShopify,
   };
 }
 
@@ -581,6 +587,7 @@ export function getProductDetail(id: number): ProductDetail {
     product,
     stock: listStockForProduct(id),
     movements: listMovements({ productId: id }),
+    shopify: unsetShopify,
   };
 }
 

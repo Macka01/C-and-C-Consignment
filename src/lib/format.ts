@@ -1,3 +1,9 @@
+export function formatSignedCount(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  if (value > 0) return `+${value}`;
+  return String(value);
+}
+
 export function formatMoney(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return new Intl.NumberFormat("en-AU", {

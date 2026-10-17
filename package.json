@@ -10,7 +10,8 @@
     "server:install": "bash server/macos/install.sh",
     "server:update": "bash server/macos/update.sh",
     "server:uninstall": "bash server/macos/uninstall.sh",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --experimental-strip-types --test src/lib/shopify-match.test.ts"
   },
   "engines": {
     "node": ">=20.9.0"

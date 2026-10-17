@@ -10,6 +10,7 @@ import { ProductFormDialog } from "@/components/product-form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PlaceDialog } from "@/components/place-dialog";
 import { MovementList } from "@/components/movement-list";
+import { ShopifyCompare, ShopifyStockNote } from "@/components/shopify-qty";
 import { api } from "@/lib/api-client";
 import { useResource } from "@/lib/use-resource";
 import { formatMoney } from "@/lib/format";
@@ -59,6 +60,7 @@ export function ProductDetailPage() {
 
           <section className="grid gap-3">
             <h2 className="font-heading text-2xl">Stock by store</h2>
+            <ShopifyStockNote shopify={detail.data.shopify} />
             {detail.data.stock.length === 0 ? (
               <EmptyBlock
                 title="Not placed anywhere yet"
@@ -82,8 +84,11 @@ export function ProductDetailPage() {
                           Code {line.consigneeCode || "not set"}
                         </p>
                       </div>
-                      <p className="font-heading text-3xl leading-none">{line.quantity}</p>
+                      <p className="font-heading text-3xl leading-none" title="Our quantity on hand">
+                        {line.quantity}
+                      </p>
                     </div>
+                    <ShopifyCompare line={line} />
                   </li>
                 ))}
               </ul>
