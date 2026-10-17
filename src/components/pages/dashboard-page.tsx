@@ -38,9 +38,9 @@ export function DashboardPage() {
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{bannerBody}</p>
         {network.data && network.data.urls.length > 0 ? (
           <p className="mt-3 text-sm">
-            Other devices:{" "}
+            Other devices on this network:{" "}
             {network.data.urls.map((href) => (
-              <a key={href} className="mr-3 font-medium text-primary underline-offset-2 hover:underline" href={href}>
+              <a key={href} className="mt-1 block break-all font-medium text-primary underline-offset-2 hover:underline" href={href}>
                 {href}
               </a>
             ))}

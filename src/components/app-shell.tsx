@@ -35,7 +35,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "rounded-lg px-3 py-2.5 text-sm font-medium",
+              "rounded-lg px-3 py-3 text-base font-medium md:py-2.5 md:text-sm",
               active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted",
             )}
           >
@@ -51,14 +51,14 @@ function Brand() {
   return (
     <div>
       <p className="font-heading text-2xl leading-none text-foreground">Cotton & Clay</p>
-      <p className="mt-1 text-[0.7rem] tracking-[0.18em] text-muted-foreground uppercase">Consignment tracker</p>
+      <p className="mt-1 text-xs tracking-[0.14em] text-muted-foreground uppercase">Consignment tracker</p>
     </div>
   );
 }
 
 function SharedNote() {
   return (
-    <p className="text-xs leading-5 text-muted-foreground">
+    <p className="text-sm leading-6 text-muted-foreground">
       One shared tracker. Phones and shop computers see the same stock. The database is the SQLite file on this Mac, not homeserver Postgres.
     </p>
   );
@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen min-w-0 overflow-x-clip">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-sidebar px-4 py-6 md:flex">
         <Brand />
         <div className="mt-8">
@@ -85,14 +85,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="md:pl-64">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/80 bg-background/90 px-4 py-3 backdrop-blur md:hidden">
+      <div className="min-w-0 md:pl-64">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/80 bg-background/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur md:hidden">
           <Button variant="outline" size="icon" className="size-10" onClick={() => setOpen(true)} aria-label="Open menu">
             <Menu />
           </Button>
           <div className="min-w-0">
-            <p className="font-heading text-lg leading-none">Cotton & Clay</p>
-            <p className="truncate text-xs text-muted-foreground">{current?.label ?? "Consignment tracker"}</p>
+            <p className="font-heading text-xl leading-none">Cotton & Clay</p>
+            <p className="truncate text-sm text-muted-foreground">{current?.label ?? "Consignment tracker"}</p>
           </div>
         </header>
         <Sheet open={open} onOpenChange={setOpen}>
@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </SheetContent>
         </Sheet>
-        <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+        <main className="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8">{children}</main>
       </div>
     </div>
   );

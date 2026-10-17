@@ -69,7 +69,7 @@ export function StoreDetailPage() {
           </div>
 
           <Tabs defaultValue="stock">
-            <TabsList className="h-auto w-full flex-wrap justify-start">
+            <TabsList className="h-auto w-full max-w-full flex-wrap justify-start">
               <TabsTrigger value="stock" className="h-9 px-3">
                 Stock
               </TabsTrigger>

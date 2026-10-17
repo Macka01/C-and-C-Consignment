@@ -126,9 +126,27 @@
     background-image:
       radial-gradient(1100px 480px at 0% -10%, oklch(0.92 0.045 45 / 0.55), transparent 55%),
       radial-gradient(900px 480px at 100% 100%, oklch(0.93 0.03 155 / 0.45), transparent 50%);
-    background-attachment: fixed;
   }
   html {
     @apply font-sans;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    overflow-x: clip;
+  }
+}
+
+/* Phones get a larger reading size, and nothing is allowed to sit wider than the screen. */
+@media (max-width: 767px) {
+  html {
+    font-size: 17px;
+  }
+  :root {
+    --text-xs: 0.94rem;
+    --text-xs--line-height: 1.35rem;
+    --text-sm: 1.06rem;
+    --text-sm--line-height: 1.5rem;
   }
 }

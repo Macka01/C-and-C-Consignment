@@ -14,12 +14,12 @@ export function SalesChart({ sales, from, to }: { sales: Movement[]; from: strin
   const range = salesRange(sales, from, to);
   const { grain, points } = salesSeries(sales, from, to);
   const peak = Math.max(0, ...points.map((point) => point.total));
-  const width = 640;
-  const height = 240;
-  const padLeft = 52;
-  const padRight = 12;
-  const padTop = 16;
-  const padBottom = 36;
+  const width = 360;
+  const height = 220;
+  const padLeft = 44;
+  const padRight = 8;
+  const padTop = 12;
+  const padBottom = 32;
   const innerWidth = width - padLeft - padRight;
   const innerHeight = height - padTop - padBottom;
   const slot = points.length > 0 ? innerWidth / points.length : innerWidth;
@@ -33,7 +33,7 @@ export function SalesChart({ sales, from, to }: { sales: Movement[]; from: strin
   }
 
   return (
-    <figure className="grid gap-3">
+    <figure className="grid min-w-0 gap-3 overflow-x-clip">
       <figcaption className="text-sm text-muted-foreground">
         {range.from && range.to ? `${formatDate(range.from)} – ${formatDate(range.to)}` : "No dates yet"}, {grainLabel(grain)}.
       </figcaption>
@@ -41,7 +41,7 @@ export function SalesChart({ sales, from, to }: { sales: Movement[]; from: strin
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={`Sales over time, ${grainLabel(grain)}. Highest column ${formatMoney(peak)}.`}
-        className="h-auto w-full"
+        className="h-64 w-full max-w-full sm:h-72"
       >
         <title>Sales over time</title>
         {[0, 0.5, 1].map((step) => {
@@ -50,7 +50,7 @@ export function SalesChart({ sales, from, to }: { sales: Movement[]; from: strin
           return (
             <g key={step}>
               <line x1={padLeft} x2={width - padRight} y1={y} y2={y} stroke="currentColor" strokeOpacity="0.12" />
-              <text x={padLeft - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground" fontSize="11">
+              <text x={padLeft - 6} y={y + 4} textAnchor="end" className="fill-muted-foreground" fontSize="13">
                 {axisMoney(value)}
               </text>
             </g>
@@ -80,7 +80,7 @@ export function SalesChart({ sales, from, to }: { sales: Movement[]; from: strin
                   y={height - 12}
                   textAnchor="middle"
                   className="fill-muted-foreground"
-                  fontSize="11"
+                  fontSize="13"
                 >
                   {point.label}
                 </text>
