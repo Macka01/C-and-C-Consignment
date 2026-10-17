@@ -21,7 +21,7 @@ export function ServerPage() {
 
       <section className="rounded-xl border border-primary/20 bg-card px-4 py-4 ring-1 ring-foreground/5">
         <h2 className="font-heading text-xl text-foreground">The Mac running the app keeps the records</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+        <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">
           {onMac ? (
             <>
               Stores, stock, sales, invoices, and shop reports are on that Mac in{" "}
@@ -36,24 +36,24 @@ export function ServerPage() {
           )}{" "}
           The device you are using to view this page does not keep its own copy.
         </p>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+        <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">
           On iPhone or iPad: Safari → Share → Add to Home Screen, using one of the addresses below.
         </p>
         {network.data ? (
           <div className="mt-4">
-            <p className="text-sm">Open the app from another device:</p>
+            <p className="text-base">Open the app from another device:</p>
             {network.data.urls.length > 0 ? (
               <ul className="mt-2 grid gap-1">
                 {network.data.urls.map((href) => (
                   <li key={href}>
-                    <a className="block break-all text-sm font-medium text-primary underline-offset-2 hover:underline" href={href}>
+                    <a className="block break-all text-base font-medium text-primary underline-offset-2 hover:underline" href={href}>
                       {href}
                     </a>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              <p className="mt-2 text-base leading-7 text-muted-foreground">
                 No network address was found. From another device, open http://&lt;the Mac’s address&gt;:{network.data.port} while the app is running.
               </p>
             )}
