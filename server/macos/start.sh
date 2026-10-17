@@ -13,8 +13,8 @@ wait_for_docker 60
 if [[ ! -f "$HOST_ENV" ]]; then
   write_host_env "http"
 fi
-echo "Bringing the tracker container up…" >&2
-compose up -d --remove-orphans
+echo "Bringing the tracker container up (recreate tracker only)…" >&2
+compose up -d --no-deps --force-recreate tracker
 join_homeserver_network
 
 if find_homeserver_caddy >/dev/null || homeserver_stack_present; then
