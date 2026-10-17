@@ -13,10 +13,11 @@ services:
     # Host 43123 only. 80/443 belong to homeserver-caddy-1; 5432 belongs to homeserver-postgres-1.
     ports:
       - "43123:43123"
+    init: true
     environment:
       NODE_ENV: production
       PORT: "43123"
-      HOSTNAME: 0.0.0.0
+      HOSTNAME: "0.0.0.0"
       TZ: ${TZ:-Australia/Sydney}
       CONSIGNMENT_DATA_DIR: /data
       CONSIGNMENT_BACKUP_DIR: /backups

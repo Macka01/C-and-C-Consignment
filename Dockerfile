@@ -34,9 +34,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+COPY server/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod 755 /app/docker-entrypoint.sh && chown nextjs:nodejs /app/docker-entrypoint.sh
 
 USER nextjs
 EXPOSE 43123
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=8 \
+HEALTHCHECK --interval=15s --timeout=5s --start-period=25s --retries=8 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:43123/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-CMD ["node", "server.js"]
+CMD ["/app/docker-entrypoint.sh"]

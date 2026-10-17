@@ -13,21 +13,32 @@ wait_for_docker 60
 if [[ ! -f "$HOST_ENV" ]]; then
   write_host_env "http"
 fi
-echo "Bringing the tracker container up (recreate tracker only)…" >&2
-compose up -d --no-deps --force-recreate tracker
+echo "Rebuilding and recreating cotton-clay-tracker only. Homeserver stays up." >&2
+compose up -d --no-deps --build --force-recreate tracker
 join_homeserver_network
 
 if find_homeserver_caddy >/dev/null || homeserver_stack_present; then
   echo "homeserver-caddy-1 is already on 80/443. Not running Tailscale Serve/Funnel." >&2
-else
-  enable_tailscale_https || true
-  compose up -d --remove-orphans
-  join_homeserver_network
 fi
 
-if curl -fsS --max-time 8 "http://127.0.0.1:43123/api/health" >/dev/null 2>&1; then
-  echo "Tracker health ok on http://127.0.0.1:43123" >&2
+ready=0
+for i in $(seq 1 30); do
+  if curl -fsS --max-time 5 "http://127.0.0.1:43123/api/health" >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  echo "Waiting for health on :43123 ($i/30)…" >&2
+  sleep 2
+done
+
+if [[ "$ready" -eq 1 ]]; then
+  echo "Tracker health ok: http://127.0.0.1:43123/api/health" >&2
+  curl -fsS --max-time 5 "http://127.0.0.1:43123/api/health"; echo
 else
-  echo "Tracker container was started but health is not answering yet. Wait a few seconds and run: bash server/macos/remote.sh status" >&2
+  echo "Health still failing. Tracker logs:" >&2
+  docker logs --tail 80 cotton-clay-tracker || true
+  echo "Listeners on 43123:" >&2
+  lsof -nP -iTCP:43123 -sTCP:LISTEN || true
+  exit 1
 fi
-echo "Tracker start finished. Mini ssh can return now." >&2
+echo "Tracker start finished." >&2
