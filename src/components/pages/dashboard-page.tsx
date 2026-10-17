@@ -7,22 +7,10 @@ import { ErrorBlock, LoadingBlock, PageHeader, RefreshButton } from "@/component
 import { MovementList } from "@/components/movement-list";
 import { useResource } from "@/lib/use-resource";
 import { commissionLabel, formatMoney, formatPeriod, rentLabel } from "@/lib/format";
-import type { Dashboard, NetworkInfo } from "@/lib/types";
+import type { Dashboard } from "@/lib/types";
 
 export function DashboardPage() {
   const dashboard = useResource<Dashboard>("/api/dashboard", 15000);
-  const network = useResource<NetworkInfo>("/api/network");
-  const sharedServer = network.data?.externalData === true;
-  const bannerTitle = network.loading
-    ? "What’s on this server"
-    : sharedServer
-      ? "This computer is the shared server"
-      : "Sample shelves, ready to edit";
-  const bannerBody = sharedServer
-    ? "Stores, stock, sales, invoices, and shop reports live in the data repository on this Mac: Library/Application Support/CottonAndClay/data (SQLite file consignment.db, not the homeserver Postgres). On iPhone or iPad: Safari → Share → Add to Home Screen."
-    : network.loading
-      ? "Stores, stock, sales, invoices, and shop reports are kept on this computer. Every phone and shop computer that opens this server sees the same records."
-      : "Harbour Linen, Terrigal Home Room, Gosford Goods, and Woy Woy Window are made-up shops so you can try the tracker. Change a phone number, record a sale, or delete a store. Nothing is locked. Every phone and shop computer that opens this server sees the same records.";
 
   return (
     <div className="grid gap-8">
@@ -32,25 +20,6 @@ export function DashboardPage() {
         lede="Cotton & Clay stock sitting with consignee stores, plus the sales, invoices, and shop reports that come back."
         action={<RefreshButton onClick={() => void dashboard.reload()} />}
       />
-
-      <div className="rounded-xl border border-primary/20 bg-card px-4 py-4 ring-1 ring-foreground/5">
-        <p className="font-heading text-lg text-foreground">{bannerTitle}</p>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{bannerBody}</p>
-        {network.data && network.data.urls.length > 0 ? (
-          <p className="mt-3 text-sm">
-            Other devices:{" "}
-            {network.data.urls.map((href) => (
-              <a key={href} className="mr-3 font-medium text-primary underline-offset-2 hover:underline" href={href}>
-                {href}
-              </a>
-            ))}
-          </p>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            From another device, open http://&lt;this computer’s IP&gt;:43123 while this server is running. On Tailscale, use the Mac’s MagicDNS name on port 43123.
-          </p>
-        )}
-      </div>
 
       {dashboard.loading && !dashboard.data ? <LoadingBlock label="Loading the shelves…" /> : null}
       {dashboard.error && !dashboard.data ? <ErrorBlock message={dashboard.error} onRetry={() => void dashboard.reload()} /> : null}

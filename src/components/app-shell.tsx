@@ -15,6 +15,7 @@ const NAV = [
   { href: "/sales", label: "Sales" },
   { href: "/invoices", label: "Invoices" },
   { href: "/reports", label: "Reports" },
+  { href: "/server", label: "Server" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -59,7 +60,7 @@ function Brand() {
 function SharedNote() {
   return (
     <p className="text-xs leading-5 text-muted-foreground">
-      One shared tracker. Phones and shop computers see the same stock. The database is the SQLite file on this Mac, not homeserver Postgres.
+      One shared tracker. Phones and shop computers see the same stock.
     </p>
   );
 }

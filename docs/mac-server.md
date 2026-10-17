@@ -100,7 +100,7 @@ Do this on the MacBook Pro itself. `homeserver-caddy-1`, `homeserver-hello-1`, a
 
    The first build takes several minutes. When it finishes it prints addresses. The three homeserver containers are left running. The new container is `cotton-clay-tracker` on port **43123**.
 
-8. **Check it on the Mac.** In Safari open [http://127.0.0.1:43123](http://127.0.0.1:43123). You should see **This computer is the shared server**. If you copied a database, a store you recognise should be there. In Terminal, `docker ps` should still list `homeserver-caddy-1`, `homeserver-hello-1`, `homeserver-postgres-1`, plus the new `cotton-clay-tracker`.
+8. **Check it on the Mac.** In Safari open [http://127.0.0.1:43123](http://127.0.0.1:43123). The dashboard lists the stores. **Server** in the menu shows where the records are kept and the addresses for other devices. If you copied a database, a store you recognise should be there. In Terminal, `docker ps` should still list `homeserver-caddy-1`, `homeserver-hello-1`, `homeserver-postgres-1`, plus the new `cotton-clay-tracker`.
 
 9. **Check it on a phone, iPad, or the Mini.** Each device needs Tailscale connected (same account as the MacBook). Then Safari: [http://100.73.158.74:43123](http://100.73.158.74:43123). Bookmark it. Steps are in [Open the tracker on Mini, iPad, iPhone](#12-open-the-tracker-on-mini-ipad-iphone). On studio Wi-Fi without Tailscale you can also try `http://<mac-name>.local:43123`. If macOS asks to allow incoming connections for Docker, allow it.
 
@@ -253,7 +253,7 @@ Run the script again any time you need to rebuild. It leaves an existing databas
 8. Add a hostname on `homeserver-caddy-1` (next section). Do not put the tracker under a path such as `/consignment` — the app’s `/api` routes would miss.
 9. Leave the old computer’s server stopped. Two running copies become two different sets of stock.
 
-The home page should say **This computer is the shared server**.
+Open **Server** in the menu. It lists where the records are kept and the addresses other devices use.
 
 ## 6. Put the tracker behind Caddy
 
