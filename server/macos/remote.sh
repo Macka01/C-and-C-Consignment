@@ -36,6 +36,12 @@ homeserver_still_up() {
 cmd="${1:-status}"
 refuse_homeserver "$@"
 
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker is not on PATH in this ssh session. Expected: /Applications/Docker.app/Contents/Resources/bin/docker" >&2
+  echo "Open Docker Desktop on Wendys-MBP, then try again." >&2
+  exit 1
+fi
+
 case "$cmd" in
   status)
     echo "tracker:"
