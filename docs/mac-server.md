@@ -454,7 +454,7 @@ iPhone / iPad: Tailscale app, same `Macka01` account, Connect, then that same ad
 
 ## When something is wrong
 
-**The phone cannot open the page.** The Mac is asleep, logged out, Docker Desktop is paused, or Tailscale is disconnected on the Mac or the phone. Wake the Mac, log in, wait until Docker is running, check the Tailscale menu extra, then try `http://127.0.0.1:43123` on the Mac itself.
+**The phone cannot open the page / Mini `status` only says `tracker:`.** The `cotton-clay-tracker` container is not running (Mac asleep, Docker Desktop paused, or the container exited). Wake Wendys-MBP, leave yourself logged in, then from the Mini: `ssh stevemcintyre@100.73.158.74 "bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh restart"`. Do not stop the homeserver containers. In Safari type `http://100.73.158.74:43123` (not https). Tailscale on the phone must be Connected.
 
 **HTTPS opens Caddy’s existing site, not the tracker.** That is expected until you add a hostname on `homeserver-caddy-1` (section 6). Use `http://127.0.0.1:43123` on the Mac, or `http://100.73.158.74:43123` on the Mini / iPad / iPhone, until that hostname exists.
 

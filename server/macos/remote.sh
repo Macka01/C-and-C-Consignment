@@ -39,8 +39,14 @@ refuse_homeserver "$@"
 case "$cmd" in
   status)
     echo "tracker:"
-    docker ps --filter name=cotton-clay-tracker --format '  {{.Names}}  {{.Status}}  {{.Ports}}' || true
-    if curl -fsS "http://127.0.0.1:43123/api/health" >/dev/null 2>&1; then
+    tracker_line="$(docker ps --filter name=cotton-clay-tracker --format '  {{.Names}}  {{.Status}}  {{.Ports}}' 2>/dev/null || true)"
+    if [[ -n "$tracker_line" ]]; then
+      printf '%s\n' "$tracker_line"
+    else
+      echo "  cotton-clay-tracker  not running"
+      echo "  start it from the Mini:  ssh stevemcintyre@100.73.158.74 \"bash /Users/stevemcintyre/cotton-clay/server/macos/remote.sh restart\""
+    fi
+    if curl -fsS --max-time 5 "http://127.0.0.1:43123/api/health" >/dev/null 2>&1; then
       echo "  health  http://127.0.0.1:43123/api/health  ok"
     else
       echo "  health  http://127.0.0.1:43123/api/health  down"
@@ -48,7 +54,7 @@ case "$cmd" in
     echo "data repository (SQLite on the Mac disk, not homeserver-postgres-1):"
     echo "  $DATA_DIR"
     if [[ -f "$DATA_DIR/consignment.db" ]]; then
-      ls -lh "$DATA_DIR/consignment.db" | awk '{ print "  consignment.db  " $5 }'
+      echo "  consignment.db  $(python3 -c 'import os,sys; print(os.path.getsize(sys.argv[1]))' "$DATA_DIR/consignment.db" 2>/dev/null || echo present) bytes"
     else
       echo "  consignment.db  missing"
     fi
