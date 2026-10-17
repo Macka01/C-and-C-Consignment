@@ -6,8 +6,8 @@ set -euo pipefail
 # shellcheck source=common.sh
 . "$(cd "$(dirname "$0")" && pwd)/common.sh"
 
-if ! docker info >/dev/null 2>&1; then
-  echo "Docker Desktop is not running; backup skipped."
+if ! docker_cmd ps >/dev/null 2>&1; then
+  echo "Docker Desktop is not answering (docker ps timed out or failed); backup skipped."
   exit 0
 fi
 if [[ ! -f "$HOST_ENV" ]]; then

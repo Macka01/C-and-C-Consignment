@@ -19,7 +19,7 @@ launchctl bootout "gui/$UID_VALUE/$BACKUP_LABEL" >/dev/null 2>&1 || true
 rm -f "$AGENT_DIR/$LABEL.plist"
 rm -f "$AGENT_DIR/$BACKUP_LABEL.plist"
 
-if docker info >/dev/null 2>&1; then
+if docker_cmd ps >/dev/null 2>&1; then
   detach_homeserver_network
   if [[ -f "$HOST_ENV" ]]; then
     compose down || true
