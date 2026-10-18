@@ -89,9 +89,15 @@ export function onHandCount(value: number) {
   return Math.max(0, Math.round(qty));
 }
 
-/** A shelf row belongs at a store when Shopify still has some there, or a sale/transfer already happened. */
-export function shelfBelongsAtStore(quantity: number, movementCount: number) {
-  return onHandCount(quantity) > 0 || movementCount > 0;
+/** A shelf row belongs at a store when Shopify still has some there, or a Shopify sale/transfer already happened. */
+export function shelfBelongsAtStore(quantity: number, shopifyMovementCount: number) {
+  return onHandCount(quantity) > 0 || shopifyMovementCount > 0;
+}
+
+/** onHand is null when Shopify does not list the product at this location. */
+export function staysOnMatchedShelf(onHand: number | null, shopifyMovementCount: number) {
+  if (shopifyMovementCount > 0) return true;
+  return onHand !== null && onHandCount(onHand) > 0;
 }
 
 export function compareStockToShopify(

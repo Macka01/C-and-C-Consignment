@@ -4,10 +4,11 @@ import {
   findProductIdForShopify,
   insertShopifyMovement,
   listStores,
-  movementCountAtStore,
   rememberShopifyLocation,
-  removeEmptyShelves,
-  removeUnstockedShelf,
+  removeShelf,
+  shopifyMovementCountAtStore,
+  shopifyMovementProductIds,
+  storeShelfProductIds,
 } from "@/lib/data";
 import {
   matchShopifyLocation,
@@ -15,7 +16,7 @@ import {
   onHandCount,
   productRefFromItem,
   salesFromOrders,
-  shelfBelongsAtStore,
+  staysOnMatchedShelf,
   type ShopifyLocationInventory,
   type ShopifyOrderLine,
   type ShopifyTransferLine,
@@ -48,16 +49,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
       const ref = productRefFromItem(item);
       if (!ref.name && !ref.sku && !ref.variantId) continue;
       const qty = onHandCount(item.onHand);
-      const known = findProductIdForShopify(ref);
-      const history = known ? movementCountAtStore(store.id, known) : 0;
-      if (!shelfBelongsAtStore(qty, history)) {
-        if (known) removeUnstockedShelf(store.id, known);
-        continue;
-      }
-      if (qty <= 0 && known) {
-        ensureShopifyStock(store.id, known, ref.sku ?? "", 0);
-        continue;
-      }
+      if (qty <= 0) continue;
       const product = ensureShopifyProduct(ref);
       if (product.created) createdProducts += 1;
       ensureShopifyStock(store.id, product.id, ref.sku ?? "", qty);
@@ -108,6 +100,38 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     }
   }
 
-  removeEmptyShelves();
+  for (const store of stores) {
+    const location = matchShopifyLocation(store.name, feed.locations);
+    if (!location) continue;
+    dropShelvesShopifyDoesNotStock(store.id, location);
+  }
+
   return { createdProducts, movements, storesMatched };
+}
+
+function dropShelvesShopifyDoesNotStock(storeId: number, location: ShopifyLocationInventory) {
+  const onHandByProduct = new Map<number, number>();
+  for (const item of location.items) {
+    const ref = productRefFromItem(item);
+    const known = findProductIdForShopify(ref);
+    if (!known) continue;
+    onHandByProduct.set(known, onHandCount(item.onHand));
+  }
+  const keep = new Set<number>();
+  for (const [productId, qty] of onHandByProduct) {
+    if (staysOnMatchedShelf(qty, shopifyMovementCountAtStore(storeId, productId))) {
+      if (qty <= 0) ensureShopifyStock(storeId, productId, "", 0);
+      keep.add(productId);
+    }
+  }
+  for (const productId of shopifyMovementProductIds(storeId)) {
+    if (keep.has(productId)) continue;
+    const qty = onHandByProduct.get(productId) ?? null;
+    if (!staysOnMatchedShelf(qty, shopifyMovementCountAtStore(storeId, productId))) continue;
+    if (!onHandByProduct.has(productId)) ensureShopifyStock(storeId, productId, "", 0);
+    keep.add(productId);
+  }
+  for (const productId of storeShelfProductIds(storeId)) {
+    if (!keep.has(productId)) removeShelf(storeId, productId);
+  }
 }

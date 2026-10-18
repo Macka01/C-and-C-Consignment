@@ -2,7 +2,6 @@ import type { ShopifyMatch, ShopifyStockStatus, StockLine } from "@/lib/types";
 
 function matchNote(match: ShopifyMatch) {
   if (match === "no_location") return "No matching Shopify location. This count is the tracker’s last quantity.";
-  if (match === "no_product") return "No matching Shopify product. This count is the tracker’s last quantity.";
   if (match === "unavailable") return "Shopify is not connected. This count is the tracker’s last quantity.";
   return null;
 }

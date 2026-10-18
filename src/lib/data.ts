@@ -188,7 +188,7 @@ function mapReport(row: ReportRow): ReportRecord {
 const stockedShelf = `
   st.quantity > 0 OR EXISTS (
     SELECT 1 FROM movements m
-    WHERE m.store_id = st.store_id AND m.product_id = st.product_id
+    WHERE m.store_id = st.store_id AND m.product_id = st.product_id AND m.shopify_gid IS NOT NULL
   )
 `;
 
@@ -576,37 +576,27 @@ export function rememberShopifyLocation(storeId: number, locationId: string) {
   getDb().prepare(`UPDATE stores SET shopify_location_id = ? WHERE id = ?`).run(locationId, storeId);
 }
 
-export function movementCountAtStore(storeId: number, productId: number) {
+export function shopifyMovementCountAtStore(storeId: number, productId: number) {
   const row = getDb()
-    .prepare(`SELECT COUNT(*) AS n FROM movements WHERE store_id = ? AND product_id = ?`)
+    .prepare(`SELECT COUNT(*) AS n FROM movements WHERE store_id = ? AND product_id = ? AND shopify_gid IS NOT NULL`)
     .get(storeId, productId) as { n: number };
   return row.n;
 }
 
-export function removeUnstockedShelf(storeId: number, productId: number) {
-  getDb()
-    .prepare(`
-      DELETE FROM store_stock
-      WHERE store_id = ? AND product_id = ? AND quantity = 0
-      AND NOT EXISTS (
-        SELECT 1 FROM movements m
-        WHERE m.store_id = store_stock.store_id AND m.product_id = store_stock.product_id
-      )
-    `)
-    .run(storeId, productId);
+export function shopifyMovementProductIds(storeId: number) {
+  const rows = getDb()
+    .prepare(`SELECT DISTINCT product_id FROM movements WHERE store_id = ? AND shopify_gid IS NOT NULL`)
+    .all(storeId) as { product_id: number }[];
+  return rows.map((row) => row.product_id);
 }
 
-export function removeEmptyShelves() {
-  getDb()
-    .prepare(`
-      DELETE FROM store_stock
-      WHERE quantity = 0
-      AND NOT EXISTS (
-        SELECT 1 FROM movements m
-        WHERE m.store_id = store_stock.store_id AND m.product_id = store_stock.product_id
-      )
-    `)
-    .run();
+export function storeShelfProductIds(storeId: number) {
+  const rows = getDb().prepare(`SELECT product_id FROM store_stock WHERE store_id = ?`).all(storeId) as { product_id: number }[];
+  return rows.map((row) => row.product_id);
+}
+
+export function removeShelf(storeId: number, productId: number) {
+  getDb().prepare(`DELETE FROM store_stock WHERE store_id = ? AND product_id = ?`).run(storeId, productId);
 }
 
 export function ensureShopifyStock(storeId: number, productId: number, consigneeCode: string, quantity: number) {

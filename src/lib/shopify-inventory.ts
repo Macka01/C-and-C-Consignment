@@ -416,6 +416,8 @@ export async function withShopifyStock<T extends StoreDetail | ProductDetail>(lo
   return {
     ...detail,
     shopify,
-    stock: detail.stock.map((line) => attachLine(line, feed?.locations ?? null)),
+    stock: detail.stock
+      .map((line) => attachLine(line, feed?.locations ?? null))
+      .filter((line) => line.shopifyMatch !== "no_product"),
   };
 }
