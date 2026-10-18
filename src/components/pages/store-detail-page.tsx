@@ -15,7 +15,7 @@ import { MovementList } from "@/components/movement-list";
 import { InvoiceList } from "@/components/invoice-list";
 import { InvoiceFormDialog } from "@/components/invoice-form-dialog";
 import { ReportPanel } from "@/components/report-panel";
-import { ShopifyCompare, ShopifyStockNote } from "@/components/shopify-qty";
+import { ShopifyMatchNote, ShopifyStockNote } from "@/components/shopify-qty";
 import { api } from "@/lib/api-client";
 import { useResource } from "@/lib/use-resource";
 import { commissionLabel, formatMoney, rentLabel } from "@/lib/format";
@@ -194,11 +194,12 @@ function StockCard({
             {line.productGroup} · retail {formatMoney(line.retailPrice)}
           </p>
         </div>
-        <p className="font-heading text-3xl leading-none" title="Shopify quantity on hand">
-          {line.shopifyQtyOnHand ?? line.quantity}
-        </p>
+        <div className="sm:text-right">
+          <p className="text-xs text-muted-foreground">On hand</p>
+          <p className="font-heading text-3xl leading-none">{line.shopifyQtyOnHand ?? line.quantity}</p>
+        </div>
       </div>
-      <ShopifyCompare line={line} />
+      <ShopifyMatchNote line={line} />
       <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
         <div className="grid gap-1.5">
           <label className="text-sm font-medium" htmlFor={`code-${line.id}`}>

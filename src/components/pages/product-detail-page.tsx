@@ -9,7 +9,7 @@ import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "@/components/f
 import { ProductFormDialog } from "@/components/product-form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MovementList } from "@/components/movement-list";
-import { ShopifyCompare, ShopifyStockNote } from "@/components/shopify-qty";
+import { ShopifyMatchNote, ShopifyStockNote } from "@/components/shopify-qty";
 import { api } from "@/lib/api-client";
 import { useResource } from "@/lib/use-resource";
 import { formatMoney } from "@/lib/format";
@@ -70,11 +70,12 @@ export function ProductDetailPage() {
                           Code {line.consigneeCode || "not set"}
                         </p>
                       </div>
-                      <p className="font-heading text-3xl leading-none" title="Shopify quantity on hand">
-                        {line.shopifyQtyOnHand ?? line.quantity}
-                      </p>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">On hand</p>
+                        <p className="font-heading text-3xl leading-none">{line.shopifyQtyOnHand ?? line.quantity}</p>
+                      </div>
                     </div>
-                    <ShopifyCompare line={line} />
+                    <ShopifyMatchNote line={line} />
                   </li>
                 ))}
               </ul>
