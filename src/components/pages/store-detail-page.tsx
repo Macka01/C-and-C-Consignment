@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -16,8 +16,9 @@ import { InvoiceList } from "@/components/invoice-list";
 import { InvoiceFormDialog } from "@/components/invoice-form-dialog";
 import { ReportPanel } from "@/components/report-panel";
 import { ShopifyMatchNote, ShopifyStockNote } from "@/components/shopify-qty";
-import { StockMovementSummary } from "@/components/stock-summary";
+import { StockListingCounts, StockOnHandBox } from "@/components/stock-summary";
 import { api } from "@/lib/api-client";
+import { matchesStockSearch } from "@/lib/stock-search";
 import { useResource } from "@/lib/use-resource";
 import { commissionLabel, formatMoney, rentLabel } from "@/lib/format";
 import type { StockLine, StoreDetail } from "@/lib/types";
@@ -30,8 +31,14 @@ export function StoreDetailPage() {
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [invoicing, setInvoicing] = useState(false);
+  const [stockQuery, setStockQuery] = useState("");
 
   const store = detail.data?.store;
+  const stock = detail.data?.stock;
+  const visibleStock = useMemo(
+    () => (stock ?? []).filter((line) => matchesStockSearch(line, stockQuery)),
+    [stock, stockQuery],
+  );
 
   return (
     <div className="grid gap-6">
@@ -81,32 +88,47 @@ export function StoreDetailPage() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="stock" className="mt-4 grid gap-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="grid gap-2">
-                  <p className="max-w-xl text-sm text-muted-foreground">
-                    Quantity, sales, and transfers come from Shopify for this location. Other is received or adjusted
-                    stock that Shopify does not list as a transfer or sale. Invoices and report files are still entered
-                    here.
-                  </p>
-                  <ShopifyStockNote shopify={detail.data.shopify} />
-                </div>
+              <div className="grid gap-2">
+                <p className="max-w-xl text-sm text-muted-foreground">
+                  Products at this location. Open a product for transferred in, transferred out, sales, other, on hand,
+                  and the transaction history. Invoices and report files are still entered here.
+                </p>
+                <ShopifyStockNote shopify={detail.data.shopify} />
               </div>
-              {detail.data.stock.length === 0 ? (
+              {!stock || stock.length === 0 ? (
                 <EmptyBlock
                   title="Nothing on this shelf"
                   body="When Shopify has stock at a location that matches this store name, products appear here."
                 />
               ) : (
-                <ul className="grid gap-3">
-                  {detail.data.stock.map((line) => (
-                    <StockCard
-                      key={`${line.id}:${line.consigneeCode}`}
-                      line={line}
-                      storeId={store.id}
-                      onChanged={() => void detail.reload()}
+                <>
+                  <div className="grid gap-1.5">
+                    <label className="text-sm font-medium" htmlFor="stock-search">
+                      Find a product
+                    </label>
+                    <Input
+                      id="stock-search"
+                      type="search"
+                      className="h-10 max-w-md"
+                      value={stockQuery}
+                      onChange={(event) => setStockQuery(event.target.value)}
+                      placeholder="Name, group, or consignee code"
+                      autoComplete="off"
                     />
-                  ))}
-                </ul>
+                  </div>
+                  {visibleStock.length === 0 ? (
+                    <EmptyBlock
+                      title="No products match"
+                      body="Try a different name, group, or consignee code."
+                    />
+                  ) : (
+                    <ul className="grid gap-3">
+                      {visibleStock.map((line) => (
+                        <StockRow key={`${line.id}:${line.consigneeCode}`} line={line} />
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
             </TabsContent>
             <TabsContent value="history" className="mt-4">
@@ -155,61 +177,25 @@ export function StoreDetailPage() {
   );
 }
 
-function StockCard({
-  line,
-  storeId,
-  onChanged,
-}: {
-  line: StockLine;
-  storeId: number;
-  onChanged: () => void;
-}) {
-  const [code, setCode] = useState(line.consigneeCode);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const dirty = code !== line.consigneeCode;
-
-  async function saveCode() {
-    setSaving(true);
-    setError(null);
-    try {
-      await api("/api/stock", {
-        method: "PATCH",
-        body: JSON.stringify({ storeId, productId: line.productId, consigneeCode: code }),
-      });
-      toast.success("Consignee code saved");
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "The code could not be saved.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
+function StockRow({ line }: { line: StockLine }) {
   return (
-    <li className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-      <div>
-        <Link href={`/products/${line.productId}`} className="font-medium hover:underline">
-          {line.productName}
-        </Link>
-        <p className="text-sm text-muted-foreground">
-          {line.productGroup} · retail {formatMoney(line.retailPrice)}
-        </p>
-      </div>
-      <StockMovementSummary line={line} />
-      <ShopifyMatchNote line={line} />
-      <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-        <div className="grid gap-1.5">
-          <label className="text-sm font-medium" htmlFor={`code-${line.id}`}>
-            Consignee code
-          </label>
-          <Input id={`code-${line.id}`} className="h-10" value={code} onChange={(event) => setCode(event.target.value)} placeholder="Store’s own code" />
+    <li>
+      <Link
+        href={`/products/${line.productId}`}
+        className="flex items-start justify-between gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/40"
+      >
+        <div className="min-w-0 grid gap-1">
+          <p className="font-medium">{line.productName}</p>
+          <p className="text-sm text-muted-foreground">
+            {line.productGroup}
+            {line.consigneeCode ? ` · ${line.consigneeCode}` : ""}
+          </p>
+          <StockListingCounts line={line} />
+          <ShopifyMatchNote line={line} className="text-xs text-muted-foreground" />
+          <p className="text-sm text-primary">Open product</p>
         </div>
-        <Button variant="outline" className="h-10" disabled={!dirty || saving} onClick={() => void saveCode()}>
-          {saving ? "Saving…" : "Save code"}
-        </Button>
-      </div>
-      {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
+        <StockOnHandBox line={line} />
+      </Link>
     </li>
   );
 }

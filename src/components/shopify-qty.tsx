@@ -6,10 +6,10 @@ function matchNote(match: ShopifyMatch) {
   return null;
 }
 
-export function ShopifyMatchNote({ line }: { line: StockLine }) {
+export function ShopifyMatchNote({ line, className }: { line: StockLine; className?: string }) {
   const note = matchNote(line.shopifyMatch);
   if (!note) return null;
-  return <p className="mt-3 text-xs text-muted-foreground">{note}</p>;
+  return <p className={className ?? "mt-3 text-xs text-muted-foreground"}>{note}</p>;
 }
 
 export function ShopifyStockNote({ shopify }: { shopify: ShopifyStockStatus }) {
