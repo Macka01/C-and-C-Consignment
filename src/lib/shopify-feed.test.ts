@@ -57,11 +57,11 @@ describe("shopify feed mapping", () => {
     assert.equal(
       locationNameFromOrder({
         retailLocation: null,
-        fulfillmentOrders: { nodes: [{ assignedLocation: { name: null, location: { name: "Terrigal Home Room" } } }] },
+        fulfillments: { nodes: [{ location: { name: "Terrigal Home Room" } }] },
       }),
       "Terrigal Home Room",
     );
-    assert.equal(locationNameFromOrder({ retailLocation: null, fulfillmentOrders: { nodes: [] } }), null);
+    assert.equal(locationNameFromOrder({ retailLocation: null, fulfillments: { nodes: [] } }), null);
   });
 
   it("splits a completed transfer into out at origin and in at destination", () => {

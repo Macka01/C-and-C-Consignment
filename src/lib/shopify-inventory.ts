@@ -110,6 +110,12 @@ const LEVELS_QUERY = `
   }
 `;
 
+const SCOPES_QUERY = `
+  query ShopifyAccessScopes {
+    currentAppInstallation { accessScopes { handle } }
+  }
+`;
+
 const ORDERS_QUERY = `
   query ShopifyOrders($cursor: String) {
     orders(first: 100, after: $cursor, sortKey: CREATED_AT, reverse: true) {
@@ -120,10 +126,8 @@ const ORDERS_QUERY = `
         createdAt
         cancelledAt
         retailLocation { id name }
-        fulfillmentOrders(first: 5) {
-          nodes {
-            assignedLocation { name location { id name } }
-          }
+        fulfillments(first: 5) {
+          nodes { location { id name } }
         }
         lineItems(first: 50) {
           nodes {
@@ -212,11 +216,7 @@ function itemsFromLevels(nodes: GraphqlLocation["inventoryLevels"]["nodes"]) {
   return items;
 }
 
-async function shopifyGraphql<T>(
-  query: string,
-  variables: Record<string, unknown> = {},
-  scopeHint?: string,
-): Promise<T> {
+async function shopifyGraphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
   const response = await fetch(`https://${shopDomain()}/admin/api/${API_VERSION}/graphql.json`, {
     method: "POST",
     headers: {
@@ -232,16 +232,10 @@ async function shopifyGraphql<T>(
   if (!response.ok) {
     throw new Error(`Shopify returned ${response.status}. Check the shop domain and Admin API token.`);
   }
-  if (body.data) {
+  if (body.data && !body.errors?.length) {
     return body.data;
   }
   if (body.errors?.length) {
-    const denied = body.errors.some(
-      (error) => error.extensions?.code === "ACCESS_DENIED" || /access denied/i.test(error.message),
-    );
-    if (denied && scopeHint) {
-      throw new Error(`The Admin API token needs the ${scopeHint} scope.`);
-    }
     throw new Error(body.errors.map((error) => error.message).join(" "));
   }
   throw new Error("Shopify returned no inventory data.");
@@ -281,11 +275,7 @@ type GraphqlOrder = {
   createdAt: string;
   cancelledAt: string | null;
   retailLocation: { id: string; name: string } | null;
-  fulfillmentOrders: {
-    nodes: Array<{
-      assignedLocation: { name: string | null; location: { id: string; name: string } | null } | null;
-    }>;
-  };
+  fulfillments: { nodes: Array<{ location: { id: string; name: string } | null }> };
   lineItems: {
     nodes: Array<{
       id: string;
@@ -302,11 +292,34 @@ type OrdersPage = {
   orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GraphqlOrder[] };
 };
 
+async function tokenScopes(): Promise<string[]> {
+  try {
+    const data: { currentAppInstallation: { accessScopes: Array<{ handle: string }> } } = await shopifyGraphql(SCOPES_QUERY);
+    return data.currentAppInstallation.accessScopes.map((scope) => scope.handle);
+  } catch {
+    return [];
+  }
+}
+
+function explainOrdersError(shopifyText: string, scopes: string[]) {
+  if (scopes.includes("read_orders")) {
+    return `Shopify denied the orders query even though this token includes read_orders. ${shopifyText}`;
+  }
+  if (scopes.length) {
+    return `This Admin API token does not include read_orders (it has ${scopes.join(", ")}). Enable read_orders, then create a new Admin API access token and put it in server/macos/host.env.`;
+  }
+  return shopifyText;
+}
+
 async function fetchOrders(): Promise<ShopifyOrderLine[]> {
   const lines: ShopifyOrderLine[] = [];
   let cursor: string | null = null;
+  try {
   for (let page = 0; page < 20; page += 1) {
-    const data: OrdersPage = await shopifyGraphql(ORDERS_QUERY, { cursor }, "read_orders");
+    const data: OrdersPage = await shopifyGraphql(ORDERS_QUERY, { cursor });
+    if (!data.orders) {
+      throw new Error("Shopify returned no orders.");
+    }
     for (const order of data.orders.nodes) {
       const locationName = locationNameFromOrder(order);
       for (const item of order.lineItems.nodes) {
@@ -337,6 +350,10 @@ async function fetchOrders(): Promise<ShopifyOrderLine[]> {
     if (!cursor) break;
   }
   return lines;
+  } catch (error) {
+    const shopifyText = error instanceof Error ? error.message : "Shopify sales could not be read.";
+    throw new Error(explainOrdersError(shopifyText, await tokenScopes()));
+  }
 }
 
 async function fetchTransfers(): Promise<ShopifyTransferLine[]> {
@@ -362,7 +379,7 @@ async function fetchTransfers(): Promise<ShopifyTransferLine[]> {
         }>;
       };
     };
-    const page: TransferPage = await shopifyGraphql(TRANSFER_QUERY, { cursor }, "read_inventory_transfers");
+    const page: TransferPage = await shopifyGraphql(TRANSFER_QUERY, { cursor });
     for (const transfer of page.inventoryTransfers.nodes) {
       const originName = transfer.origin?.location?.name ?? transfer.origin?.name ?? "";
       const destinationName = transfer.destination?.location?.name ?? transfer.destination?.name ?? "";
