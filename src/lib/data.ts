@@ -185,6 +185,13 @@ function mapReport(row: ReportRow): ReportRecord {
   };
 }
 
+const stockedShelf = `
+  st.quantity > 0 OR EXISTS (
+    SELECT 1 FROM movements m
+    WHERE m.store_id = st.store_id AND m.product_id = st.product_id
+  )
+`;
+
 const storeSelect = `
   SELECT s.id, s.name, s.address, s.phone, s.contact_name, s.rent_amount, s.commission_rate,
          COALESCE(SUM(st.quantity), 0) AS units,
@@ -295,7 +302,7 @@ export function listProducts(): Product[] {
              COALESCE(SUM(st.quantity), 0) AS units,
              COUNT(st.id) AS store_count
       FROM products p
-      LEFT JOIN store_stock st ON st.product_id = p.id
+      LEFT JOIN store_stock st ON st.product_id = p.id AND (${stockedShelf})
       GROUP BY p.id
       ORDER BY p.product_group COLLATE NOCASE, p.name COLLATE NOCASE
     `)
@@ -310,7 +317,7 @@ export function getProduct(id: number): Product | null {
              COALESCE(SUM(st.quantity), 0) AS units,
              COUNT(st.id) AS store_count
       FROM products p
-      LEFT JOIN store_stock st ON st.product_id = p.id
+      LEFT JOIN store_stock st ON st.product_id = p.id AND (${stockedShelf})
       WHERE p.id = ?
       GROUP BY p.id
     `)
@@ -374,7 +381,7 @@ export function listStock(storeId: number): StockLine[] {
       FROM store_stock st
       JOIN products p ON p.id = st.product_id
       JOIN stores s ON s.id = st.store_id
-      WHERE st.store_id = ?
+      WHERE st.store_id = ? AND (${stockedShelf})
       ORDER BY p.product_group COLLATE NOCASE, p.name COLLATE NOCASE
     `)
     .all(storeId) as StockRow[];
@@ -390,7 +397,7 @@ export function listStockForProduct(productId: number): StockLine[] {
       FROM store_stock st
       JOIN products p ON p.id = st.product_id
       JOIN stores s ON s.id = st.store_id
-      WHERE st.product_id = ?
+      WHERE st.product_id = ? AND (${stockedShelf})
       ORDER BY s.name COLLATE NOCASE
     `)
     .all(productId) as StockRow[];
@@ -567,6 +574,39 @@ export function ensureShopifyProduct(ref: {
 
 export function rememberShopifyLocation(storeId: number, locationId: string) {
   getDb().prepare(`UPDATE stores SET shopify_location_id = ? WHERE id = ?`).run(locationId, storeId);
+}
+
+export function movementCountAtStore(storeId: number, productId: number) {
+  const row = getDb()
+    .prepare(`SELECT COUNT(*) AS n FROM movements WHERE store_id = ? AND product_id = ?`)
+    .get(storeId, productId) as { n: number };
+  return row.n;
+}
+
+export function removeUnstockedShelf(storeId: number, productId: number) {
+  getDb()
+    .prepare(`
+      DELETE FROM store_stock
+      WHERE store_id = ? AND product_id = ? AND quantity = 0
+      AND NOT EXISTS (
+        SELECT 1 FROM movements m
+        WHERE m.store_id = store_stock.store_id AND m.product_id = store_stock.product_id
+      )
+    `)
+    .run(storeId, productId);
+}
+
+export function removeEmptyShelves() {
+  getDb()
+    .prepare(`
+      DELETE FROM store_stock
+      WHERE quantity = 0
+      AND NOT EXISTS (
+        SELECT 1 FROM movements m
+        WHERE m.store_id = store_stock.store_id AND m.product_id = store_stock.product_id
+      )
+    `)
+    .run();
 }
 
 export function ensureShopifyStock(storeId: number, productId: number, consigneeCode: string, quantity: number) {

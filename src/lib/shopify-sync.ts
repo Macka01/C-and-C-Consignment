@@ -4,13 +4,18 @@ import {
   findProductIdForShopify,
   insertShopifyMovement,
   listStores,
+  movementCountAtStore,
   rememberShopifyLocation,
+  removeEmptyShelves,
+  removeUnstockedShelf,
 } from "@/lib/data";
 import {
   matchShopifyLocation,
   movementsFromTransfers,
+  onHandCount,
   productRefFromItem,
   salesFromOrders,
+  shelfBelongsAtStore,
   type ShopifyLocationInventory,
   type ShopifyOrderLine,
   type ShopifyTransferLine,
@@ -42,14 +47,20 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     for (const item of location.items) {
       const ref = productRefFromItem(item);
       if (!ref.name && !ref.sku && !ref.variantId) continue;
-      if (item.onHand <= 0) {
-        const known = findProductIdForShopify(ref);
-        if (known) ensureShopifyStock(store.id, known, ref.sku ?? "", 0);
+      const qty = onHandCount(item.onHand);
+      const known = findProductIdForShopify(ref);
+      const history = known ? movementCountAtStore(store.id, known) : 0;
+      if (!shelfBelongsAtStore(qty, history)) {
+        if (known) removeUnstockedShelf(store.id, known);
+        continue;
+      }
+      if (qty <= 0 && known) {
+        ensureShopifyStock(store.id, known, ref.sku ?? "", 0);
         continue;
       }
       const product = ensureShopifyProduct(ref);
       if (product.created) createdProducts += 1;
-      ensureShopifyStock(store.id, product.id, ref.sku ?? "", item.onHand);
+      ensureShopifyStock(store.id, product.id, ref.sku ?? "", qty);
     }
   }
 
@@ -97,5 +108,6 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     }
   }
 
+  removeEmptyShelves();
   return { createdProducts, movements, storesMatched };
 }

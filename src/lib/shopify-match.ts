@@ -83,6 +83,17 @@ export function shopifyVariance(shopifyQtyOnHand: number | null, ourQuantity: nu
   return shopifyQtyOnHand === null ? null : shopifyQtyOnHand - ourQuantity;
 }
 
+export function onHandCount(value: number) {
+  const qty = Number(value);
+  if (!Number.isFinite(qty)) return 0;
+  return Math.max(0, Math.round(qty));
+}
+
+/** A shelf row belongs at a store when Shopify still has some there, or a sale/transfer already happened. */
+export function shelfBelongsAtStore(quantity: number, movementCount: number) {
+  return onHandCount(quantity) > 0 || movementCount > 0;
+}
+
 export function compareStockToShopify(
   line: { storeName?: string; productName: string; consigneeCode: string; quantity: number },
   locations: ShopifyLocationInventory[] | null,

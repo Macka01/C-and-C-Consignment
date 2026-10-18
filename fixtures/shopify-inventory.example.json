@@ -47,6 +47,28 @@
           "description": "Pulled from Shopify",
           "price": 42,
           "onHand": 3
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/21",
+          "sku": "THR-VASE-DE",
+          "title": "Flax Vue Vase",
+          "variantTitle": "Duck Egg",
+          "displayName": "Flax Vue Vase — Duck Egg",
+          "productType": "Flax ceramics",
+          "description": null,
+          "price": 22,
+          "onHand": 0
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/100",
+          "sku": "ZERO-ITEM",
+          "title": "Not Stocked Here",
+          "variantTitle": "Default",
+          "displayName": "Not Stocked Here",
+          "productType": "Shopify",
+          "description": null,
+          "price": 10,
+          "onHand": 0
         }
       ]
     },

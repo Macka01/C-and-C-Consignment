@@ -5,6 +5,7 @@ import {
   matchShopifyItem,
   matchShopifyLocation,
   normalizeShopifyName,
+  shelfBelongsAtStore,
   shopifyVariance,
   type ShopifyLocationInventory,
 } from "./shopify-match.ts";
@@ -78,5 +79,12 @@ describe("shopify inventory match", () => {
       "no_product",
     );
     assert.equal(compareStockToShopify({ productName: "X", consigneeCode: "", quantity: 1 }, null).shopifyMatch, "unavailable");
+  });
+
+  it("keeps a product at a store only when it has stock or history", () => {
+    assert.equal(shelfBelongsAtStore(3, 0), true);
+    assert.equal(shelfBelongsAtStore(0, 2), true);
+    assert.equal(shelfBelongsAtStore(0, 0), false);
+    assert.equal(shelfBelongsAtStore(Number.NaN, 0), false);
   });
 });
