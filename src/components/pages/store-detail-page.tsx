@@ -16,6 +16,7 @@ import { InvoiceList } from "@/components/invoice-list";
 import { InvoiceFormDialog } from "@/components/invoice-form-dialog";
 import { ReportPanel } from "@/components/report-panel";
 import { ShopifyMatchNote, ShopifyStockNote } from "@/components/shopify-qty";
+import { StockMovementSummary } from "@/components/stock-summary";
 import { api } from "@/lib/api-client";
 import { useResource } from "@/lib/use-resource";
 import { commissionLabel, formatMoney, rentLabel } from "@/lib/format";
@@ -185,20 +186,15 @@ function StockCard({
 
   return (
     <li className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <Link href={`/products/${line.productId}`} className="font-medium hover:underline">
-            {line.productName}
-          </Link>
-          <p className="text-sm text-muted-foreground">
-            {line.productGroup} · retail {formatMoney(line.retailPrice)}
-          </p>
-        </div>
-        <div className="sm:text-right">
-          <p className="text-xs text-muted-foreground">On hand</p>
-          <p className="font-heading text-3xl leading-none">{line.shopifyQtyOnHand ?? line.quantity}</p>
-        </div>
+      <div>
+        <Link href={`/products/${line.productId}`} className="font-medium hover:underline">
+          {line.productName}
+        </Link>
+        <p className="text-sm text-muted-foreground">
+          {line.productGroup} · retail {formatMoney(line.retailPrice)}
+        </p>
       </div>
+      <StockMovementSummary line={line} />
       <ShopifyMatchNote line={line} />
       <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
         <div className="grid gap-1.5">

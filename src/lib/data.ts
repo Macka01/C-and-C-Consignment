@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import os from "node:os";
 import { getDb, reportsDir, usesExternalDataDir } from "@/lib/db";
 import { HttpError } from "@/lib/errors";
+import { attachStockTotals } from "@/lib/stock-totals";
 import type {
   Dashboard,
   Invoice,
@@ -137,6 +138,9 @@ function mapStock(row: StockRow): StockLine {
     shopifyQtyOnHand: null,
     variance: null,
     shopifyMatch: "unavailable",
+    transferredIn: 0,
+    transferredOut: 0,
+    sales: 0,
   };
 }
 
@@ -728,10 +732,11 @@ export function listSales(filters: { storeId: number | null; from: string | null
 
 export function getStoreDetail(id: number): StoreDetail {
   const store = requireStore(id);
+  const movements = listMovements({ storeId: id });
   return {
     store,
-    stock: listStock(id),
-    movements: listMovements({ storeId: id }),
+    stock: attachStockTotals(listStock(id), movements),
+    movements,
     invoices: listInvoices(id),
     reports: listReports({ storeId: id }),
     shopify: unsetShopify,
@@ -740,10 +745,11 @@ export function getStoreDetail(id: number): StoreDetail {
 
 export function getProductDetail(id: number): ProductDetail {
   const product = requireProduct(id);
+  const movements = listMovements({ productId: id });
   return {
     product,
-    stock: listStockForProduct(id),
-    movements: listMovements({ productId: id }),
+    stock: attachStockTotals(listStockForProduct(id), movements),
+    movements,
     shopify: unsetShopify,
   };
 }

@@ -43,6 +43,9 @@ export type StockLine = {
   shopifyQtyOnHand: number | null;
   variance: number | null;
   shopifyMatch: ShopifyMatch;
+  transferredIn: number;
+  transferredOut: number;
+  sales: number;
 };
 
 export type Movement = {

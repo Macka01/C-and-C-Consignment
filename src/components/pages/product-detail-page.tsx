@@ -10,6 +10,7 @@ import { ProductFormDialog } from "@/components/product-form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MovementList } from "@/components/movement-list";
 import { ShopifyMatchNote, ShopifyStockNote } from "@/components/shopify-qty";
+import { StockMovementSummary } from "@/components/stock-summary";
 import { api } from "@/lib/api-client";
 import { useResource } from "@/lib/use-resource";
 import { formatMoney } from "@/lib/format";
@@ -61,20 +62,15 @@ export function ProductDetailPage() {
               <ul className="grid gap-3">
                 {detail.data.stock.map((line) => (
                   <li key={line.id} className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <Link href={`/stores/${line.storeId}`} className="font-medium hover:underline">
-                          {line.storeName}
-                        </Link>
-                        <p className="text-sm text-muted-foreground">
-                          Code {line.consigneeCode || "not set"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">On hand</p>
-                        <p className="font-heading text-3xl leading-none">{line.shopifyQtyOnHand ?? line.quantity}</p>
-                      </div>
+                    <div>
+                      <Link href={`/stores/${line.storeId}`} className="font-medium hover:underline">
+                        {line.storeName}
+                      </Link>
+                      <p className="text-sm text-muted-foreground">
+                        Code {line.consigneeCode || "not set"}
+                      </p>
                     </div>
+                    <StockMovementSummary line={line} />
                     <ShopifyMatchNote line={line} />
                   </li>
                 ))}
