@@ -39,7 +39,7 @@ export function ProductsPage() {
       {products.data && products.data.length === 0 ? (
         <EmptyBlock
           title="The catalog is empty"
-          body="Add the first piece Cotton & Clay places with stores."
+          body="Shopify creates products when they appear at a consignee location, or add one here."
           action={
             <Button className="h-10" onClick={() => setOpen(true)}>
               Add a product

@@ -76,7 +76,7 @@ export function DashboardPage() {
               movements={dashboard.data.recentMovements}
               showStore
               emptyTitle="No movements yet"
-              emptyBody="Transfer stock into a store, or record a sale from a shop report."
+              emptyBody="Shopify sales and transfers will show up here once a location is matched."
             />
           </section>
         </>

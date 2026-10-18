@@ -46,7 +46,7 @@ export function SalesPage() {
       <PageHeader
         eyebrow="From the shops"
         title="Sales history"
-        lede="Filter by store and dates. The totals, the chart, and the list all use that same selection."
+        lede="Sales come from Shopify. Filter by store and dates. The totals, the chart, and the list all use that same selection."
         action={<RefreshButton onClick={() => void sales.reload()} />}
       />
       <Card>
@@ -112,7 +112,7 @@ export function SalesPage() {
           {rows.length === 0 ? (
             <EmptyBlock
               title="No sales in this view"
-              body="Widen the dates, pick another store, or record a sale from a store’s stock page."
+              body="Widen the dates, pick another store, or wait for the next Shopify sale at a matched location."
             />
           ) : (
             <>
