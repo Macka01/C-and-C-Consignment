@@ -84,7 +84,9 @@ export function StoreDetailPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="grid gap-2">
                   <p className="max-w-xl text-sm text-muted-foreground">
-                    Quantity, sales, and transfers come from Shopify for this location. Invoices and report files are still entered here.
+                    Quantity, sales, and transfers come from Shopify for this location. Other is received or adjusted
+                    stock that Shopify does not list as a transfer or sale. Invoices and report files are still entered
+                    here.
                   </p>
                   <ShopifyStockNote shopify={detail.data.shopify} />
                 </div>

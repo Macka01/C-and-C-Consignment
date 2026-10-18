@@ -5,6 +5,7 @@ import {
   attachStockTotals,
   emptyMovementTotals,
   onHandFromTotals,
+  otherFromOnHand,
 } from "./stock-totals.ts";
 import type { Movement, StockLine } from "./types.ts";
 
@@ -16,6 +17,18 @@ describe("stock movement totals", () => {
     totals = addMovementToTotals(totals, "sale", 3);
     assert.deepEqual(totals, { transferredIn: 12, transferredOut: 2, sales: 3 });
     assert.equal(onHandFromTotals(totals), 7);
+    assert.equal(otherFromOnHand(7, totals), 0);
+  });
+
+  it("treats leftover Shopify on hand as other (received or adjusted)", () => {
+    const trinket = emptyMovementTotals();
+    assert.equal(otherFromOnHand(2, trinket), 2);
+    assert.equal(2, onHandFromTotals(trinket) + otherFromOnHand(2, trinket));
+
+    const star = { transferredIn: 3, transferredOut: 10, sales: 0 };
+    assert.equal(onHandFromTotals(star), -7);
+    assert.equal(otherFromOnHand(2, star), 9);
+    assert.equal(2, onHandFromTotals(star) + otherFromOnHand(2, star));
   });
 
   it("attaches totals for one store product", () => {

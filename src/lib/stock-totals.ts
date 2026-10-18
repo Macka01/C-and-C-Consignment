@@ -20,6 +20,11 @@ export function onHandFromTotals(totals: MovementTotals) {
   return totals.transferredIn - totals.transferredOut - totals.sales;
 }
 
+/** Shopify on hand minus transfer/sale roll-forward. Covers received, counted, or opening stock. */
+export function otherFromOnHand(onHand: number, totals: MovementTotals) {
+  return onHand - onHandFromTotals(totals);
+}
+
 export function attachStockTotals(stock: StockLine[], movements: Movement[]): StockLine[] {
   const map = new Map<string, MovementTotals>();
   for (const movement of movements) {
