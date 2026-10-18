@@ -102,6 +102,11 @@ cat > "$AGENT_DIR/$LABEL.plist" <<EOF
     <string>/bin/bash</string>
     <string>$START_XML</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>COTTON_CLAY_FROM_LAUNCHD</key>
+    <string>1</string>
+  </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
@@ -148,28 +153,23 @@ cat > "$AGENT_DIR/$BACKUP_LABEL.plist" <<EOF
 </plist>
 EOF
 
+# Bring the tracker up before loading the LaunchAgent. Bootstrap with
+# RunAtLoad would otherwise start a second start.sh and recreate the
+# container while health is still being checked.
+bash "$APP_DIR/server/macos/start.sh"
+
 launchctl bootstrap "gui/$UID_VALUE" "$AGENT_DIR/$LABEL.plist"
 launchctl bootstrap "gui/$UID_VALUE" "$AGENT_DIR/$BACKUP_LABEL.plist"
 launchctl enable "gui/$UID_VALUE/$LABEL"
 launchctl enable "gui/$UID_VALUE/$BACKUP_LABEL"
 
-bash "$APP_DIR/server/macos/start.sh"
-
-ready=0
-for _ in $(seq 1 60); do
-  if curl -fsS "http://127.0.0.1:43123/api/health" >/dev/null; then
-    ready=1
-    break
-  fi
-  sleep 2
-done
-
-if [[ "$ready" -ne 1 ]]; then
+if ! tracker_health_ok; then
   echo "The tracker did not answer on http://127.0.0.1:43123/api/health."
   echo "Container logs:"
   compose logs --tail 80 tracker || true
   echo "Last lines of $LOG_DIR/tracker.err.log:"
   tail -n 40 "$LOG_DIR/tracker.err.log" 2>/dev/null || true
+  echo "Left running: homeserver-caddy-1, homeserver-hello-1, homeserver-postgres-1."
   exit 1
 fi
 

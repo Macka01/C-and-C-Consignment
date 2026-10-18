@@ -11,6 +11,7 @@ AGENT_DIR="${HOME}/Library/LaunchAgents"
 LABEL="com.cottonandclay.tracker"
 BACKUP_LABEL="com.cottonandclay.backup"
 compose_project="cotton-clay"
+START_LOCK_DIR="$SUPPORT_DIR/start.lockdir"
 
 export PATH="/usr/local/bin:/opt/homebrew/bin:/Applications/Docker.app/Contents/Resources/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 
@@ -20,6 +21,36 @@ xml_escape() {
   value=${value//</&lt;}
   value=${value//>/&gt;}
   printf '%s' "$value"
+}
+
+tracker_health_ok() {
+  curl -fsS --max-time 3 "http://127.0.0.1:43123/api/health" >/dev/null 2>&1
+}
+
+release_start_lock() {
+  rm -rf "$START_LOCK_DIR"
+}
+
+acquire_start_lock() {
+  local i pid
+  mkdir -p "$SUPPORT_DIR"
+  for i in $(seq 1 90); do
+    if mkdir "$START_LOCK_DIR" 2>/dev/null; then
+      printf '%s\n' "$$" >"$START_LOCK_DIR/pid"
+      trap release_start_lock EXIT
+      return 0
+    fi
+    pid="$(cat "$START_LOCK_DIR/pid" 2>/dev/null || true)"
+    if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null; then
+      echo "Clearing a stale tracker start lock (pid $pid is gone)." >&2
+      rm -rf "$START_LOCK_DIR"
+      continue
+    fi
+    echo "Another tracker start is already running. Waiting ($i/90)… homeserver stays up." >&2
+    sleep 2
+  done
+  echo "Timed out waiting for the other tracker start. Do not docker stop homeserver-caddy-1, homeserver-hello-1, or homeserver-postgres-1." >&2
+  return 1
 }
 
 run_timeout() {
