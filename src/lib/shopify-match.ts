@@ -142,6 +142,23 @@ export type ShopifyTransferEvent = {
   product: ShopifyProductRef;
 };
 
+export function locationNameFromOrder(order: {
+  retailLocation?: { name: string | null } | null;
+  fulfillmentOrders?: {
+    nodes: Array<{
+      assignedLocation?: { name?: string | null; location?: { name: string | null } | null } | null;
+    }>;
+  } | null;
+}): string | null {
+  const retail = order.retailLocation?.name?.trim();
+  if (retail) return retail;
+  for (const fulfillment of order.fulfillmentOrders?.nodes ?? []) {
+    const name = fulfillment.assignedLocation?.location?.name?.trim() || fulfillment.assignedLocation?.name?.trim();
+    if (name) return name;
+  }
+  return null;
+}
+
 export type ShopifyOrderLine = {
   id: string;
   orderName: string;

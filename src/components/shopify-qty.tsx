@@ -34,9 +34,16 @@ export function ShopifyStockNote({ shopify }: { shopify: ShopifyStockStatus }) {
     );
   }
   return (
-    <p className="max-w-xl text-sm text-muted-foreground">
-      Quantity is Shopify on hand at this location. Sales and transfers are pulled from Shopify. Other is received or
-      adjusted stock that is not a transfer or sale. Missing products are created when they appear there.
-    </p>
+    <div className="grid max-w-xl gap-2">
+      {shopify.warning ? (
+        <p className="text-sm text-destructive" role="alert">
+          {shopify.warning}
+        </p>
+      ) : null}
+      <p className="text-sm text-muted-foreground">
+        Quantity is Shopify on hand at this location. Sales and transfers are pulled from Shopify. Other is received or
+        adjusted stock that is not a transfer or sale. Missing products are created when they appear there.
+      </p>
+    </div>
   );
 }

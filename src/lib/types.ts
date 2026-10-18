@@ -27,6 +27,7 @@ export type ShopifyMatch = "matched" | "no_location" | "no_product" | "unavailab
 export type ShopifyStockStatus = {
   configured: boolean;
   error: string | null;
+  warning: string | null;
 };
 
 export type StockLine = {

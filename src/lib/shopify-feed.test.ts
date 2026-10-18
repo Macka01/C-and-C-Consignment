@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { movementsFromTransfers, salesFromOrders } from "./shopify-match.ts";
+import { locationNameFromOrder, movementsFromTransfers, salesFromOrders } from "./shopify-match.ts";
 
 describe("shopify feed mapping", () => {
   it("turns located orders into sales and skips cancelled lines", () => {
@@ -44,6 +44,24 @@ describe("shopify feed mapping", () => {
     assert.equal(sales[0].occurredOn, "2026-10-12");
     assert.equal(sales[0].quantity, 2);
     assert.equal(sales[0].notes, "Shopify #100");
+  });
+
+  it("uses the retail location on an order, then the fulfillment location", () => {
+    assert.equal(
+      locationNameFromOrder({
+        retailLocation: { name: "Harbour Linen" },
+        fulfillmentOrders: { nodes: [{ assignedLocation: { name: "Studio", location: { name: "Studio" } } }] },
+      }),
+      "Harbour Linen",
+    );
+    assert.equal(
+      locationNameFromOrder({
+        retailLocation: null,
+        fulfillmentOrders: { nodes: [{ assignedLocation: { name: null, location: { name: "Terrigal Home Room" } } }] },
+      }),
+      "Terrigal Home Room",
+    );
+    assert.equal(locationNameFromOrder({ retailLocation: null, fulfillmentOrders: { nodes: [] } }), null);
   });
 
   it("splits a completed transfer into out at origin and in at destination", () => {

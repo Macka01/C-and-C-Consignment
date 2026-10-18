@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { compareStockToShopify, type ShopifyLocationInventory } from "@/lib/shopify-match";
+import { compareStockToShopify, locationNameFromOrder, type ShopifyLocationInventory } from "@/lib/shopify-match";
 import { applyShopifyFeed, type ShopifyFeed } from "@/lib/shopify-sync";
 import type { ShopifyOrderLine, ShopifyTransferLine } from "@/lib/shopify-match";
 import type { ProductDetail, ShopifyStockStatus, StockLine, StoreDetail } from "@/lib/types";
@@ -13,6 +13,7 @@ type Cache = {
   at: number;
   feed: ShopifyFeed | null;
   error: string | null;
+  warning: string | null;
 };
 
 const globalForShopify = globalThis as unknown as { consignmentShopify?: Cache };
@@ -109,6 +110,42 @@ const LEVELS_QUERY = `
   }
 `;
 
+const ORDERS_QUERY = `
+  query ShopifyOrders($cursor: String) {
+    orders(first: 100, after: $cursor, sortKey: CREATED_AT, reverse: true) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        id
+        name
+        createdAt
+        cancelledAt
+        retailLocation { id name }
+        fulfillmentOrders(first: 5) {
+          nodes {
+            assignedLocation { name location { id name } }
+          }
+        }
+        lineItems(first: 50) {
+          nodes {
+            id
+            quantity
+            sku
+            name
+            originalUnitPriceSet { shopMoney { amount } }
+            variant {
+              id
+              sku
+              title
+              price
+              product { title productType description }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 const TRANSFER_QUERY = `
   query ShopifyTransfers($cursor: String) {
     inventoryTransfers(first: 50, after: $cursor) {
@@ -175,7 +212,11 @@ function itemsFromLevels(nodes: GraphqlLocation["inventoryLevels"]["nodes"]) {
   return items;
 }
 
-async function shopifyGraphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+async function shopifyGraphql<T>(
+  query: string,
+  variables: Record<string, unknown> = {},
+  scopeHint?: string,
+): Promise<T> {
   const response = await fetch(`https://${shopDomain()}/admin/api/${API_VERSION}/graphql.json`, {
     method: "POST",
     headers: {
@@ -184,17 +225,26 @@ async function shopifyGraphql<T>(query: string, variables: Record<string, unknow
     },
     body: JSON.stringify({ query, variables }),
   });
-  const body = (await response.json()) as { data?: T; errors?: Array<{ message: string }> };
+  const body = (await response.json()) as {
+    data?: T;
+    errors?: Array<{ message: string; extensions?: { code?: string } }>;
+  };
   if (!response.ok) {
     throw new Error(`Shopify returned ${response.status}. Check the shop domain and Admin API token.`);
   }
+  if (body.data) {
+    return body.data;
+  }
   if (body.errors?.length) {
+    const denied = body.errors.some(
+      (error) => error.extensions?.code === "ACCESS_DENIED" || /access denied/i.test(error.message),
+    );
+    if (denied && scopeHint) {
+      throw new Error(`The Admin API token needs the ${scopeHint} scope.`);
+    }
     throw new Error(body.errors.map((error) => error.message).join(" "));
   }
-  if (!body.data) {
-    throw new Error("Shopify returned no inventory data.");
-  }
-  return body.data;
+  throw new Error("Shopify returned no inventory data.");
 }
 
 async function loadLocationLevels(location: GraphqlLocation): Promise<ShopifyLocationInventory> {
@@ -225,72 +275,64 @@ async function fetchLocations(): Promise<ShopifyLocationInventory[]> {
   return locations;
 }
 
-function locationNameById(locations: ShopifyLocationInventory[], id: number | string | null | undefined) {
-  if (id === null || id === undefined || id === "") return null;
-  const needle = String(id);
-  const match = locations.find((location) => location.locationId === needle || location.locationId.endsWith(`/${needle}`));
-  return match?.locationName ?? null;
-}
+type GraphqlOrder = {
+  id: string;
+  name: string;
+  createdAt: string;
+  cancelledAt: string | null;
+  retailLocation: { id: string; name: string } | null;
+  fulfillmentOrders: {
+    nodes: Array<{
+      assignedLocation: { name: string | null; location: { id: string; name: string } | null } | null;
+    }>;
+  };
+  lineItems: {
+    nodes: Array<{
+      id: string;
+      quantity: number;
+      sku: string | null;
+      name: string | null;
+      originalUnitPriceSet: { shopMoney: { amount: string } | null } | null;
+      variant: GraphqlVariant | null;
+    }>;
+  };
+};
 
-async function fetchOrders(locations: ShopifyLocationInventory[]): Promise<ShopifyOrderLine[]> {
+async function fetchOrders(): Promise<ShopifyOrderLine[]> {
   const lines: ShopifyOrderLine[] = [];
-  let pageInfo = "";
+  let cursor: string | null = null;
   for (let page = 0; page < 20; page += 1) {
-    const query = pageInfo
-      ? `orders.json?limit=250&status=any&page_info=${encodeURIComponent(pageInfo)}`
-      : `orders.json?limit=250&status=any`;
-    const response = await fetch(`https://${shopDomain()}/admin/api/${API_VERSION}/${query}`, {
-      headers: { "X-Shopify-Access-Token": accessToken() },
-    });
-    if (!response.ok) {
-      throw new Error(`Shopify orders returned ${response.status}. Add the read_orders scope.`);
-    }
-    const body = (await response.json()) as {
-      orders?: Array<{
-        id: number;
-        name: string;
-        created_at: string;
-        cancelled_at: string | null;
-        location_id: number | null;
-        line_items: Array<{
-          id: number;
-          quantity: number;
-          price: string;
-          sku: string | null;
-          name: string;
-          variant_id: number | null;
-          variant_title: string | null;
-          product_id: number | null;
-        }>;
-      }>;
-    };
-    for (const order of body.orders ?? []) {
-      const locationName = locationNameById(locations, order.location_id);
-      for (const item of order.line_items ?? []) {
+    const data = await shopifyGraphql<{
+      orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GraphqlOrder[] };
+    }>(ORDERS_QUERY, { cursor }, "read_orders");
+    for (const order of data.orders.nodes) {
+      const locationName = locationNameFromOrder(order);
+      for (const item of order.lineItems.nodes) {
         if (item.quantity <= 0) continue;
+        const variant = item.variant ?? undefined;
+        const unitPrice = money(item.originalUnitPriceSet?.shopMoney?.amount) ?? money(variant?.price);
         lines.push({
-          id: `gid://shopify/LineItem/${item.id}`,
+          id: item.id,
           orderName: order.name,
-          createdAt: order.created_at,
-          cancelled: Boolean(order.cancelled_at),
+          createdAt: order.createdAt,
+          cancelled: Boolean(order.cancelledAt),
           locationName,
           quantity: item.quantity,
-          unitPrice: money(item.price),
+          unitPrice,
           product: {
-            variantId: item.variant_id ? `gid://shopify/ProductVariant/${item.variant_id}` : null,
-            sku: item.sku,
-            name: item.name,
-            productGroup: "Shopify",
-            description: "",
-            retailPrice: money(item.price) ?? 0,
+            variantId: variant?.id ?? null,
+            sku: item.sku ?? variant?.sku ?? null,
+            name: item.name?.trim() || refFromVariant(variant, item.sku).name,
+            productGroup: variant?.product?.productType?.trim() || "Shopify",
+            description: variant?.product?.description?.trim() || "",
+            retailPrice: unitPrice ?? 0,
           },
         });
       }
     }
-    const link = response.headers.get("link") ?? "";
-    const next = link.match(/<[^>]*page_info=([^&>]+)[^>]*>; rel="next"/);
-    if (!next) break;
-    pageInfo = decodeURIComponent(next[1]);
+    if (!data.orders.pageInfo.hasNextPage) break;
+    cursor = data.orders.pageInfo.endCursor;
+    if (!cursor) break;
   }
   return lines;
 }
@@ -318,7 +360,7 @@ async function fetchTransfers(): Promise<ShopifyTransferLine[]> {
         }>;
       };
     };
-    const page: TransferPage = await shopifyGraphql(TRANSFER_QUERY, { cursor });
+    const page: TransferPage = await shopifyGraphql(TRANSFER_QUERY, { cursor }, "read_inventory_transfers");
     for (const transfer of page.inventoryTransfers.nodes) {
       const originName = transfer.origin?.location?.name ?? transfer.origin?.name ?? "";
       const destinationName = transfer.destination?.location?.name ?? transfer.destination?.name ?? "";
@@ -340,60 +382,54 @@ async function fetchTransfers(): Promise<ShopifyTransferLine[]> {
   return lines;
 }
 
-async function fetchShopifyFeed(): Promise<ShopifyFeed> {
+async function fetchShopifyFeed(): Promise<{ feed: ShopifyFeed; warning: string | null }> {
   const mock = mockPath();
   if (mock) {
     const parsed = JSON.parse(fs.readFileSync(path.resolve(mock), "utf8")) as ShopifyFeed;
     return {
-      locations: parsed.locations ?? [],
-      orders: parsed.orders ?? [],
-      transfers: parsed.transfers ?? [],
+      feed: {
+        locations: parsed.locations ?? [],
+        orders: parsed.orders ?? [],
+        transfers: parsed.transfers ?? [],
+      },
+      warning: null,
     };
   }
 
   const locations = await fetchLocations();
-  const errors: string[] = [];
+  const warnings: string[] = [];
   let orders: ShopifyOrderLine[] = [];
   let transfers: ShopifyTransferLine[] = [];
   try {
-    orders = await fetchOrders(locations);
+    orders = await fetchOrders();
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : "Shopify orders could not be read.");
+    warnings.push(error instanceof Error ? error.message : "Shopify sales could not be read.");
   }
   try {
     transfers = await fetchTransfers();
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : "Shopify transfers could not be read.");
+    warnings.push(error instanceof Error ? error.message : "Shopify transfers could not be read.");
   }
-  if (errors.length && orders.length === 0 && transfers.length === 0 && locations.length === 0) {
-    throw new Error(errors.join(" "));
-  }
-  if (errors.length) {
-    const feed = { locations, orders, transfers };
-    (feed as ShopifyFeed & { warning?: string }).warning = errors.join(" ");
-    return feed;
-  }
-  return { locations, orders, transfers };
+  return { feed: { locations, orders, transfers }, warning: warnings.join(" ") || null };
 }
 
-async function loadFeed(): Promise<{ feed: ShopifyFeed | null; error: string | null }> {
+async function loadFeed(): Promise<{ feed: ShopifyFeed | null; error: string | null; warning: string | null }> {
   if (!shopifyConfigured()) {
-    return { feed: null, error: null };
+    return { feed: null, error: null, warning: null };
   }
   const key = cacheKey();
   const existing = globalForShopify.consignmentShopify;
   if (existing && existing.key === key && Date.now() - existing.at < CACHE_MS) {
-    return { feed: existing.feed, error: existing.error };
+    return { feed: existing.feed, error: existing.error, warning: existing.warning };
   }
   try {
-    const feed = await fetchShopifyFeed();
-    const warning = (feed as ShopifyFeed & { warning?: string }).warning ?? null;
-    globalForShopify.consignmentShopify = { key, at: Date.now(), feed, error: warning };
-    return { feed, error: warning };
+    const { feed, warning } = await fetchShopifyFeed();
+    globalForShopify.consignmentShopify = { key, at: Date.now(), feed, error: null, warning };
+    return { feed, error: null, warning };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Shopify could not be read.";
-    globalForShopify.consignmentShopify = { key, at: Date.now(), feed: null, error: message };
-    return { feed: null, error: message };
+    globalForShopify.consignmentShopify = { key, at: Date.now(), feed: null, error: message, warning: null };
+    return { feed: null, error: message, warning: null };
   }
 }
 
@@ -402,11 +438,11 @@ function attachLine(line: StockLine, locations: ShopifyLocationInventory[] | nul
 }
 
 export async function syncFromShopify(): Promise<ShopifyStockStatus> {
-  const { feed, error } = await loadFeed();
+  const { feed, error, warning } = await loadFeed();
   if (feed) {
     applyShopifyFeed(feed);
   }
-  return { configured: shopifyConfigured(), error };
+  return { configured: shopifyConfigured(), error, warning };
 }
 
 export async function withShopifyStock<T extends StoreDetail | ProductDetail>(load: () => T): Promise<T> {

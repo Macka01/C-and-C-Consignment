@@ -20,7 +20,7 @@ import type {
   StoreDetail,
 } from "@/lib/types";
 
-const unsetShopify = { configured: false, error: null };
+const unsetShopify = { configured: false, error: null, warning: null };
 
 type StoreRow = {
   id: number;
