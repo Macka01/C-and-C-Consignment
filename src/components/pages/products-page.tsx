@@ -24,7 +24,7 @@ export function ProductsPage() {
       <PageHeader
         eyebrow="Catalog"
         title="Products"
-        lede="The studio catalog. A product can sit in more than one store, each with its own consignee code and quantity."
+        lede="The catalog. Shopify creates products when they appear at a consignee location. Quantity and sales come from Shopify."
         action={
           <>
             <RefreshButton onClick={() => void products.reload()} />

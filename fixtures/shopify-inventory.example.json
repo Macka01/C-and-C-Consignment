@@ -5,25 +5,48 @@
       "locationName": "Harbour Linen",
       "items": [
         {
+          "variantId": "gid://shopify/ProductVariant/11",
           "sku": "HLB-BOWL-DE",
           "title": "Flax Serve Bowl",
           "variantTitle": "Duck Egg",
           "displayName": "Flax Serve Bowl — Duck Egg",
+          "productType": "Flax ceramics",
+          "description": null,
+          "price": 15,
           "onHand": 11
         },
         {
+          "variantId": "gid://shopify/ProductVariant/12",
           "sku": "HLB-MUG-KH",
           "title": "Flax Mug",
           "variantTitle": "Khaki",
           "displayName": "Flax Mug — Khaki",
+          "productType": "Flax ceramics",
+          "description": null,
+          "price": 18,
           "onHand": 4
         },
         {
+          "variantId": "gid://shopify/ProductVariant/13",
           "sku": "HLB-BOWL-SG",
           "title": "Everyday Bowl",
           "variantTitle": "Speckle Grey",
           "displayName": "Everyday Bowl — Speckle Grey",
+          "productType": "Handmade",
+          "description": null,
+          "price": 36,
           "onHand": 5
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/99",
+          "sku": "NEW-VASE-01",
+          "title": "Harbour Window Vase",
+          "variantTitle": "Clear",
+          "displayName": "Harbour Window Vase — Clear",
+          "productType": "Glass",
+          "description": "Pulled from Shopify",
+          "price": 42,
+          "onHand": 3
         }
       ]
     },
@@ -32,61 +55,54 @@
       "locationName": "Terrigal Home Room",
       "items": [
         {
+          "variantId": "gid://shopify/ProductVariant/21",
           "sku": "THR-VASE-DE",
           "title": "Flax Vue Vase",
           "variantTitle": "Duck Egg",
           "displayName": "Flax Vue Vase — Duck Egg",
+          "productType": "Flax ceramics",
+          "description": null,
+          "price": 22,
           "onHand": 7
-        },
-        {
-          "sku": "THR-BOWL-GL",
-          "title": "Everyday Bowl",
-          "variantTitle": "Grit Large",
-          "displayName": "Everyday Bowl — Grit Large",
-          "onHand": 6
-        },
-        {
-          "sku": "THR-BUNT-NAT",
-          "title": "Bunting",
-          "variantTitle": "Antique Lace Natural",
-          "displayName": "Bunting — Antique Lace Natural",
-          "onHand": 5
         }
       ]
-    },
+    }
+  ],
+  "orders": [
     {
-      "locationId": "gid://shopify/Location/3",
-      "locationName": "Gosford Goods",
-      "items": [
-        {
-          "sku": "GG-PORC-LH",
-          "title": "Porcelain Bowl",
-          "variantTitle": "Little Houses",
-          "displayName": "Porcelain Bowl — Little Houses",
-          "onHand": 8
-        },
-        {
-          "sku": "GG-WOVEN-T",
-          "title": "African Woven Bowl",
-          "variantTitle": "Terracotta",
-          "displayName": "African Woven Bowl — Terracotta",
-          "onHand": 8
-        },
-        {
-          "sku": "GG-MUG-KH",
-          "title": "Flax Mug",
-          "variantTitle": "Khaki",
-          "displayName": "Flax Mug — Khaki",
-          "onHand": 9
-        },
-        {
-          "sku": "GG-BOWL-DE",
-          "title": "Flax Serve Bowl",
-          "variantTitle": "Duck Egg",
-          "displayName": "Flax Serve Bowl — Duck Egg",
-          "onHand": 4
-        }
-      ]
+      "id": "gid://shopify/LineItem/501",
+      "orderName": "#1042",
+      "createdAt": "2026-10-12T03:00:00Z",
+      "cancelled": false,
+      "locationName": "Harbour Linen",
+      "quantity": 1,
+      "unitPrice": 18,
+      "product": {
+        "variantId": "gid://shopify/ProductVariant/12",
+        "sku": "HLB-MUG-KH",
+        "name": "Flax Mug — Khaki",
+        "productGroup": "Flax ceramics",
+        "description": "",
+        "retailPrice": 18
+      }
+    }
+  ],
+  "transfers": [
+    {
+      "id": "gid://shopify/InventoryTransferLineItem/9",
+      "status": "TRANSFERRED",
+      "occurredOn": "2026-10-08T00:00:00Z",
+      "originName": "Harbour Linen",
+      "destinationName": "Terrigal Home Room",
+      "quantity": 2,
+      "product": {
+        "variantId": "gid://shopify/ProductVariant/11",
+        "sku": "HLB-BOWL-DE",
+        "name": "Flax Serve Bowl — Duck Egg",
+        "productGroup": "Flax ceramics",
+        "description": "",
+        "retailPrice": 15
+      }
     }
   ]
 }

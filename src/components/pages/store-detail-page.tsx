@@ -11,8 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "@/components/feedback";
 import { StoreFormDialog } from "@/components/store-form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { MovementDialog } from "@/components/movement-dialog";
-import { PlaceDialog } from "@/components/place-dialog";
 import { MovementList } from "@/components/movement-list";
 import { InvoiceList } from "@/components/invoice-list";
 import { InvoiceFormDialog } from "@/components/invoice-form-dialog";
@@ -21,19 +19,16 @@ import { ShopifyCompare, ShopifyStockNote } from "@/components/shopify-qty";
 import { api } from "@/lib/api-client";
 import { useResource } from "@/lib/use-resource";
 import { commissionLabel, formatMoney, rentLabel } from "@/lib/format";
-import type { MovementType, Product, StockLine, StoreDetail } from "@/lib/types";
+import type { StockLine, StoreDetail } from "@/lib/types";
 
 export function StoreDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
   const detail = useResource<StoreDetail>(id ? `/api/stores/${id}` : null);
-  const products = useResource<Product[]>("/api/products");
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const [placing, setPlacing] = useState(false);
   const [invoicing, setInvoicing] = useState(false);
-  const [movement, setMovement] = useState<{ mode: MovementType; line: StockLine } | null>(null);
 
   const store = detail.data?.store;
 
@@ -88,23 +83,15 @@ export function StoreDetailPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="grid gap-2">
                   <p className="max-w-xl text-sm text-muted-foreground">
-                    Quantity is shared. A sale or transfer saved here updates the shelf for everyone else. A transfer out or sale will not take the count below zero.
+                    Quantity, sales, and transfers come from Shopify for this location. Invoices and report files are still entered here.
                   </p>
                   <ShopifyStockNote shopify={detail.data.shopify} />
                 </div>
-                <Button className="h-10" onClick={() => setPlacing(true)}>
-                  Place a product
-                </Button>
               </div>
               {detail.data.stock.length === 0 ? (
                 <EmptyBlock
                   title="Nothing on this shelf"
-                  body="Place a catalog product here, then transfer stock in."
-                  action={
-                    <Button className="h-10" onClick={() => setPlacing(true)}>
-                      Place a product
-                    </Button>
-                  }
+                  body="When Shopify has stock at a location that matches this store name, products appear here."
                 />
               ) : (
                 <ul className="grid gap-3">
@@ -114,7 +101,6 @@ export function StoreDetailPage() {
                       line={line}
                       storeId={store.id}
                       onChanged={() => void detail.reload()}
-                      onMove={(mode) => setMovement({ mode, line })}
                     />
                   ))}
                 </ul>
@@ -124,7 +110,7 @@ export function StoreDetailPage() {
               <MovementList
                 movements={detail.data.movements}
                 emptyTitle="No history for this store"
-                emptyBody="Transfers and sales recorded against this shop will be listed here. History is kept; correct a mistake with another movement."
+                emptyBody="Shopify sales and transfers for this location will be listed here."
               />
             </TabsContent>
             <TabsContent value="invoices" className="mt-4 grid gap-4">
@@ -153,38 +139,11 @@ export function StoreDetailPage() {
               router.push("/stores");
             }}
           />
-          <PlaceDialog
-            open={placing}
-            onOpenChange={setPlacing}
-            storeId={store.id}
-            choices={(products.data ?? []).map((product) => ({ id: product.id, label: `${product.productGroup} · ${product.name}` }))}
-            takenIds={detail.data.stock.map((line) => line.productId)}
-            onSaved={() => void detail.reload()}
-          />
           <InvoiceFormDialog
             open={invoicing}
             onOpenChange={setInvoicing}
             stores={[store]}
             fixedStoreId={store.id}
-            onSaved={() => void detail.reload()}
-          />
-          <MovementDialog
-            open={Boolean(movement)}
-            onOpenChange={(open) => {
-              if (!open) setMovement(null);
-            }}
-            mode={movement?.mode ?? "transfer_in"}
-            storeId={store.id}
-            product={
-              movement
-                ? {
-                    id: movement.line.productId,
-                    name: movement.line.productName,
-                    retailPrice: movement.line.retailPrice,
-                    quantity: movement.line.quantity,
-                  }
-                : null
-            }
             onSaved={() => void detail.reload()}
           />
         </>
@@ -197,12 +156,10 @@ function StockCard({
   line,
   storeId,
   onChanged,
-  onMove,
 }: {
   line: StockLine;
   storeId: number;
   onChanged: () => void;
-  onMove: (mode: MovementType) => void;
 }) {
   const [code, setCode] = useState(line.consigneeCode);
   const [saving, setSaving] = useState(false);
@@ -237,8 +194,8 @@ function StockCard({
             {line.productGroup} · retail {formatMoney(line.retailPrice)}
           </p>
         </div>
-        <p className="font-heading text-3xl leading-none" title="Our quantity on hand">
-          {line.quantity}
+        <p className="font-heading text-3xl leading-none" title="Shopify quantity on hand">
+          {line.shopifyQtyOnHand ?? line.quantity}
         </p>
       </div>
       <ShopifyCompare line={line} />
@@ -254,17 +211,6 @@ function StockCard({
         </Button>
       </div>
       {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button className="h-10" onClick={() => onMove("transfer_in")}>
-          Transfer in
-        </Button>
-        <Button variant="outline" className="h-10" onClick={() => onMove("transfer_out")}>
-          Transfer out
-        </Button>
-        <Button variant="secondary" className="h-10" onClick={() => onMove("sale")}>
-          Record sale
-        </Button>
-      </div>
     </li>
   );
 }

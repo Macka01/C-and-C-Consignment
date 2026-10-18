@@ -216,6 +216,7 @@ export type ProductInput = {
   name: string;
   description: string;
   retailPrice: number;
+  shopifyVariantId?: string | null;
 };
 
 export type InvoiceInput = {
@@ -321,10 +322,18 @@ export function createProduct(input: ProductInput): Product {
   const now = new Date().toISOString();
   const info = getDb()
     .prepare(`
-      INSERT INTO products (product_group, name, description, retail_price, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO products (product_group, name, description, retail_price, shopify_variant_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `)
-    .run(input.productGroup, input.name, input.description, input.retailPrice, now, now);
+    .run(
+      input.productGroup,
+      input.name,
+      input.description,
+      input.retailPrice,
+      input.shopifyVariantId ?? null,
+      now,
+      now,
+    );
   return getProduct(Number(info.lastInsertRowid))!;
 }
 
@@ -502,6 +511,124 @@ function rethrowStockError(error: unknown): never {
     throw new HttpError("The quantity on hand changed while this was saving. Refresh and try again.", 409);
   }
   throw error;
+}
+
+export function findProductIdForShopify(ref: {
+  variantId: string | null;
+  sku: string | null;
+  name: string;
+}): number | null {
+  const db = getDb();
+  if (ref.variantId) {
+    const byVariant = db.prepare(`SELECT id FROM products WHERE shopify_variant_id = ?`).get(ref.variantId) as
+      | { id: number }
+      | undefined;
+    if (byVariant) return byVariant.id;
+  }
+  if (ref.sku) {
+    const bySku = db
+      .prepare(`SELECT product_id AS id FROM store_stock WHERE consignee_code = ? COLLATE NOCASE LIMIT 1`)
+      .get(ref.sku) as { id: number } | undefined;
+    if (bySku) return bySku.id;
+  }
+  const byName = db.prepare(`SELECT id FROM products WHERE name = ? COLLATE NOCASE`).get(ref.name) as
+    | { id: number }
+    | undefined;
+  return byName?.id ?? null;
+}
+
+export function ensureShopifyProduct(ref: {
+  variantId: string | null;
+  sku: string | null;
+  name: string;
+  productGroup: string;
+  description: string;
+  retailPrice: number;
+}): { id: number; created: boolean } {
+  const existing = findProductIdForShopify(ref);
+  if (existing) {
+    if (ref.variantId) {
+      getDb().prepare(`UPDATE products SET shopify_variant_id = COALESCE(shopify_variant_id, ?) WHERE id = ?`).run(
+        ref.variantId,
+        existing,
+      );
+    }
+    return { id: existing, created: false };
+  }
+  const created = createProduct({
+    productGroup: ref.productGroup || "Shopify",
+    name: ref.name,
+    description: ref.description,
+    retailPrice: ref.retailPrice,
+    shopifyVariantId: ref.variantId,
+  });
+  return { id: created.id, created: true };
+}
+
+export function rememberShopifyLocation(storeId: number, locationId: string) {
+  getDb().prepare(`UPDATE stores SET shopify_location_id = ? WHERE id = ?`).run(locationId, storeId);
+}
+
+export function ensureShopifyStock(storeId: number, productId: number, consigneeCode: string, quantity: number) {
+  const db = getDb();
+  const qty = Math.max(0, Math.round(quantity));
+  const existing = db
+    .prepare(`SELECT id FROM store_stock WHERE store_id = ? AND product_id = ?`)
+    .get(storeId, productId) as { id: number } | undefined;
+  if (existing) {
+    db.prepare(`UPDATE store_stock SET quantity = ?, consignee_code = CASE WHEN ? = '' THEN consignee_code ELSE ? END WHERE id = ?`).run(
+      qty,
+      consigneeCode,
+      consigneeCode,
+      existing.id,
+    );
+    return;
+  }
+  db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (?, ?, ?, ?)`).run(
+    storeId,
+    productId,
+    consigneeCode,
+    qty,
+  );
+}
+
+export function insertShopifyMovement(input: {
+  gid: string;
+  type: MovementType;
+  storeId: number;
+  productId: number;
+  quantity: number;
+  occurredOn: string;
+  unitPrice: number | null;
+  notes: string | null;
+}): boolean {
+  const db = getDb();
+  const exists = db.prepare(`SELECT id FROM movements WHERE shopify_gid = ?`).get(input.gid);
+  if (exists) return false;
+  const stock = db
+    .prepare(`SELECT id FROM store_stock WHERE store_id = ? AND product_id = ?`)
+    .get(input.storeId, input.productId);
+  if (!stock) {
+    db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (?, ?, '', 0)`).run(
+      input.storeId,
+      input.productId,
+    );
+  }
+  db.prepare(`
+    INSERT INTO movements (store_id, product_id, type, quantity, unit_price, occurred_on, notes, created_at, shopify_gid)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.storeId,
+    input.productId,
+    input.type,
+    input.quantity,
+    input.unitPrice,
+    input.occurredOn,
+    input.notes,
+    `${input.occurredOn}T00:00:00.000Z`,
+    input.gid,
+  );
+  return true;
 }
 
 export function recordMovement(input: MovementInput): Movement {

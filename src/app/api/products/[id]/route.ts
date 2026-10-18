@@ -8,7 +8,7 @@ export async function GET(_request: Request, ctx: IdContext) {
   try {
     await live();
     const { id } = await ctx.params;
-    return json(await withShopifyStock(getProductDetail(positiveId(id, "Product"))));
+    return json(await withShopifyStock(() => getProductDetail(positiveId(id, "Product"))));
   } catch (error) {
     return fail(error);
   }

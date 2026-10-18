@@ -1,12 +1,37 @@
 export type ShopifyMatch = "matched" | "no_location" | "no_product" | "unavailable";
 
 export type ShopifyInventoryItem = {
+  variantId: string | null;
   sku: string | null;
   title: string;
   variantTitle: string | null;
   displayName: string | null;
+  productType: string | null;
+  description: string | null;
+  price: number | null;
   onHand: number;
 };
+
+export type ShopifyProductRef = {
+  variantId: string | null;
+  sku: string | null;
+  name: string;
+  productGroup: string;
+  description: string;
+  retailPrice: number;
+};
+
+export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRef {
+  const name = item.displayName?.trim() || [item.title, item.variantTitle].filter(Boolean).join(" — ") || item.title;
+  return {
+    variantId: item.variantId,
+    sku: item.sku,
+    name,
+    productGroup: item.productType?.trim() || "Shopify",
+    description: item.description?.trim() || "",
+    retailPrice: item.price ?? 0,
+  };
+}
 
 export type ShopifyLocationInventory = {
   locationId: string;
@@ -78,4 +103,94 @@ export function compareStockToShopify(
     variance: shopifyVariance(item.onHand, line.quantity),
     shopifyMatch: "matched",
   };
+}
+
+export type ShopifySaleEvent = {
+  gid: string;
+  locationName: string;
+  occurredOn: string;
+  quantity: number;
+  unitPrice: number | null;
+  notes: string;
+  product: ShopifyProductRef;
+};
+
+export type ShopifyTransferEvent = {
+  gid: string;
+  locationName: string;
+  type: "transfer_in" | "transfer_out";
+  occurredOn: string;
+  quantity: number;
+  notes: string;
+  product: ShopifyProductRef;
+};
+
+export type ShopifyOrderLine = {
+  id: string;
+  orderName: string;
+  createdAt: string;
+  cancelled: boolean;
+  locationName: string | null;
+  quantity: number;
+  unitPrice: number | null;
+  product: ShopifyProductRef;
+};
+
+export type ShopifyTransferLine = {
+  id: string;
+  status: string;
+  occurredOn: string;
+  originName: string;
+  destinationName: string;
+  quantity: number;
+  product: ShopifyProductRef;
+};
+
+function day(iso: string) {
+  return iso.slice(0, 10);
+}
+
+export function salesFromOrders(orders: ShopifyOrderLine[]): ShopifySaleEvent[] {
+  const sales: ShopifySaleEvent[] = [];
+  for (const line of orders) {
+    if (line.cancelled || !line.locationName || line.quantity <= 0) continue;
+    sales.push({
+      gid: line.id,
+      locationName: line.locationName,
+      occurredOn: day(line.createdAt),
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      notes: `Shopify ${line.orderName}`,
+      product: line.product,
+    });
+  }
+  return sales;
+}
+
+export function movementsFromTransfers(transfers: ShopifyTransferLine[]): ShopifyTransferEvent[] {
+  const events: ShopifyTransferEvent[] = [];
+  for (const line of transfers) {
+    const status = line.status.toLowerCase();
+    if (status.includes("cancel") || status === "draft" || line.quantity <= 0) continue;
+    const date = day(line.occurredOn);
+    events.push({
+      gid: `${line.id}:out`,
+      locationName: line.originName,
+      type: "transfer_out",
+      occurredOn: date,
+      quantity: line.quantity,
+      notes: `Shopify transfer to ${line.destinationName}`,
+      product: line.product,
+    });
+    events.push({
+      gid: `${line.id}:in`,
+      locationName: line.destinationName,
+      type: "transfer_in",
+      occurredOn: date,
+      quantity: line.quantity,
+      notes: `Shopify transfer from ${line.originName}`,
+      product: line.product,
+    });
+  }
+  return events;
 }

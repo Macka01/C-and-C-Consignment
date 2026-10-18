@@ -1,13 +1,12 @@
-import { placeProduct, updateConsigneeCode } from "@/lib/data";
+import { updateConsigneeCode } from "@/lib/data";
+import { HttpError } from "@/lib/errors";
 import { fail, json, live, readJson } from "@/lib/handlers";
-import { parsePlacement } from "@/lib/parse";
 import { optionalText, positiveId } from "@/lib/validate";
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     await live();
-    placeProduct(parsePlacement(await readJson(request)));
-    return json({ ok: true }, 201);
+    throw new HttpError("Products are placed from Shopify when they appear at this location.", 409);
   } catch (error) {
     return fail(error);
   }

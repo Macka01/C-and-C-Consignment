@@ -1,6 +1,6 @@
-import { listMovements, recordMovement } from "@/lib/data";
-import { fail, json, live, readJson } from "@/lib/handlers";
-import { parseMovement } from "@/lib/parse";
+import { listMovements } from "@/lib/data";
+import { HttpError } from "@/lib/errors";
+import { fail, json, live } from "@/lib/handlers";
 import { queryId } from "@/lib/validate";
 
 export async function GET(request: Request) {
@@ -18,10 +18,10 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     await live();
-    return json(recordMovement(parseMovement(await readJson(request))), 201);
+    throw new HttpError("Stock movements come from Shopify. Record the sale or transfer there.", 409);
   } catch (error) {
     return fail(error);
   }

@@ -8,22 +8,19 @@ import { Button } from "@/components/ui/button";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "@/components/feedback";
 import { ProductFormDialog } from "@/components/product-form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { PlaceDialog } from "@/components/place-dialog";
 import { MovementList } from "@/components/movement-list";
 import { ShopifyCompare, ShopifyStockNote } from "@/components/shopify-qty";
 import { api } from "@/lib/api-client";
 import { useResource } from "@/lib/use-resource";
 import { formatMoney } from "@/lib/format";
-import type { ProductDetail, Store } from "@/lib/types";
+import type { ProductDetail } from "@/lib/types";
 
 export function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const detail = useResource<ProductDetail>(params.id ? `/api/products/${params.id}` : null);
-  const stores = useResource<Store[]>("/api/stores");
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const [placing, setPlacing] = useState(false);
   const product = detail.data?.product;
 
   return (
@@ -44,9 +41,6 @@ export function ProductDetailPage() {
                 <Button variant="outline" className="h-10" onClick={() => setEditing(true)}>
                   Edit product
                 </Button>
-                <Button className="h-10" onClick={() => setPlacing(true)}>
-                  Place at a store
-                </Button>
                 <Button variant="ghost" className="h-10" onClick={() => setRemoving(true)}>
                   Delete
                 </Button>
@@ -62,15 +56,7 @@ export function ProductDetailPage() {
             <h2 className="font-heading text-2xl">Stock by store</h2>
             <ShopifyStockNote shopify={detail.data.shopify} />
             {detail.data.stock.length === 0 ? (
-              <EmptyBlock
-                title="Not placed anywhere yet"
-                body="Put it on a store shelf when you’re ready to consign it."
-                action={
-                  <Button className="h-10" onClick={() => setPlacing(true)}>
-                    Place at a store
-                  </Button>
-                }
-              />
+              <EmptyBlock title="Not at a store yet" body="Shopify will place it here when it has quantity at a matching location." />
             ) : (
               <ul className="grid gap-3">
                 {detail.data.stock.map((line) => (
@@ -84,8 +70,8 @@ export function ProductDetailPage() {
                           Code {line.consigneeCode || "not set"}
                         </p>
                       </div>
-                      <p className="font-heading text-3xl leading-none" title="Our quantity on hand">
-                        {line.quantity}
+                      <p className="font-heading text-3xl leading-none" title="Shopify quantity on hand">
+                        {line.shopifyQtyOnHand ?? line.quantity}
                       </p>
                     </div>
                     <ShopifyCompare line={line} />
@@ -102,19 +88,11 @@ export function ProductDetailPage() {
               showStore
               showProduct={false}
               emptyTitle="No history for this product"
-              emptyBody="Transfers and sales of this piece, at any store, will be listed here."
+              emptyBody="Shopify sales and transfers of this piece will be listed here."
             />
           </section>
 
           <ProductFormDialog open={editing} onOpenChange={setEditing} initial={product} onSaved={() => void detail.reload()} />
-          <PlaceDialog
-            open={placing}
-            onOpenChange={setPlacing}
-            productId={product.id}
-            choices={(stores.data ?? []).map((store) => ({ id: store.id, label: store.name }))}
-            takenIds={detail.data.stock.map((line) => line.storeId)}
-            onSaved={() => void detail.reload()}
-          />
           <ConfirmDialog
             open={removing}
             onOpenChange={setRemoving}

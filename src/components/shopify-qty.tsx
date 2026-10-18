@@ -48,14 +48,19 @@ export function ShopifyStockNote({ shopify }: { shopify: ShopifyStockStatus }) {
     return (
       <p className="max-w-xl text-sm text-muted-foreground">
         Add <span className="font-medium text-foreground">SHOPIFY_SHOP</span> and{" "}
-        <span className="font-medium text-foreground">SHOPIFY_ACCESS_TOKEN</span> on the server to show Shopify qty on
-        hand. We do not change our quantity from Shopify.
+        <span className="font-medium text-foreground">SHOPIFY_ACCESS_TOKEN</span> on the server. The token needs{" "}
+        <span className="font-medium text-foreground">read_inventory</span>,{" "}
+        <span className="font-medium text-foreground">read_locations</span>,{" "}
+        <span className="font-medium text-foreground">read_products</span>,{" "}
+        <span className="font-medium text-foreground">read_orders</span>, and{" "}
+        <span className="font-medium text-foreground">read_inventory_transfers</span>.
       </p>
     );
   }
   return (
     <p className="max-w-xl text-sm text-muted-foreground">
-      Shopify qty on hand is a snapshot. Variance is Shopify minus our quantity. We do not overwrite our count.
+      Quantity is Shopify on hand at this location. Sales and transfers are pulled from Shopify. Missing products are
+      created when they appear there.
     </p>
   );
 }

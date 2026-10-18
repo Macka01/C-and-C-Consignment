@@ -76,11 +76,13 @@ Sample stores, products, transfers, sales, one invoice, and one report are loade
 
 Uploads accept JPEG, PNG, WEBP, HEIC, and PDF, up to 20 MB. Files stay on this server’s disk. They are not sent to a cloud store.
 
-## Shopify qty on hand
+## Shopify reporting
 
-Stock cards can show **Shopify qty on hand** and a **variance** (Shopify minus our quantity). Shopify is display-only. Sales, transfers, and our quantity stay in this app.
+Quantity, sales, and transfers come from Shopify. This app does not record shelf movements. A store name matches a Shopify location. A product is created if Shopify has it at that location and it is not in the catalog yet (name, price, product type, SKU).
 
-Match a store to a Shopify location by name. Match a product by consignee code to SKU, or by product name if the code is empty. A custom app Admin API token needs `read_inventory`, `read_locations`, and `read_products`.
+The Admin API token needs `read_inventory`, `read_locations`, `read_products`, `read_orders`, and `read_inventory_transfers`.
+
+Invoices and consignee report files are still entered here. A shop PDF is paperwork only — it does not subtract stock.
 
 ```bash
 # development
@@ -102,4 +104,4 @@ bash server/macos/start.sh
 - No user accounts, roles, or audit of who changed a row.
 - Data exists only on the machine that runs the app. On the Mac server, back up the data repository with `bash server/macos/backup.sh` (the install also schedules a daily copy).
 - “This month” on the dashboard follows the server’s clock.
-- Shopify figures are a snapshot. We do not overwrite our quantity from Shopify.
+- Shopify is the source for on-hand, sales, and transfers. Manual stock movements are disabled.
