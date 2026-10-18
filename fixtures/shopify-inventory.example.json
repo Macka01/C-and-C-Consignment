@@ -64,6 +64,17 @@
           "description": null,
           "price": 22,
           "onHand": 7
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/11",
+          "sku": "HLB-BOWL-DE",
+          "title": "Flax Serve Bowl",
+          "variantTitle": "Duck Egg",
+          "displayName": "Flax Serve Bowl — Duck Egg",
+          "productType": "Flax ceramics",
+          "description": null,
+          "price": 15,
+          "onHand": 2
         }
       ]
     }
