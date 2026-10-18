@@ -127,7 +127,7 @@ const ORDERS_QUERY = `
         cancelledAt
         retailLocation { id name }
         fulfillments(first: 5) {
-          nodes { location { id name } }
+          location { id name }
         }
         lineItems(first: 50) {
           nodes {
@@ -275,7 +275,7 @@ type GraphqlOrder = {
   createdAt: string;
   cancelledAt: string | null;
   retailLocation: { id: string; name: string } | null;
-  fulfillments: { nodes: Array<{ location: { id: string; name: string } | null }> };
+  fulfillments: Array<{ location: { id: string; name: string } | null }>;
   lineItems: {
     nodes: Array<{
       id: string;

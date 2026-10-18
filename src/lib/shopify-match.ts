@@ -144,7 +144,7 @@ export type ShopifyTransferEvent = {
 
 export function locationNameFromOrder(order: {
   retailLocation?: { name: string | null } | null;
-  fulfillments?: { nodes: Array<{ location?: { name: string | null } | null }> } | null;
+  fulfillments?: Array<{ location?: { name: string | null } | null }> | { nodes: Array<{ location?: { name: string | null } | null }> } | null;
   fulfillmentOrders?: {
     nodes: Array<{
       assignedLocation?: { name?: string | null; location?: { name: string | null } | null } | null;
@@ -153,7 +153,8 @@ export function locationNameFromOrder(order: {
 }): string | null {
   const retail = order.retailLocation?.name?.trim();
   if (retail) return retail;
-  for (const fulfillment of order.fulfillments?.nodes ?? []) {
+  const fulfillments = Array.isArray(order.fulfillments) ? order.fulfillments : (order.fulfillments?.nodes ?? []);
+  for (const fulfillment of fulfillments) {
     const name = fulfillment.location?.name?.trim();
     if (name) return name;
   }
