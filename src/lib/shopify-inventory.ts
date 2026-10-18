@@ -298,13 +298,15 @@ type GraphqlOrder = {
   };
 };
 
+type OrdersPage = {
+  orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GraphqlOrder[] };
+};
+
 async function fetchOrders(): Promise<ShopifyOrderLine[]> {
   const lines: ShopifyOrderLine[] = [];
   let cursor: string | null = null;
   for (let page = 0; page < 20; page += 1) {
-    const data = await shopifyGraphql<{
-      orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GraphqlOrder[] };
-    }>(ORDERS_QUERY, { cursor }, "read_orders");
+    const data: OrdersPage = await shopifyGraphql(ORDERS_QUERY, { cursor }, "read_orders");
     for (const order of data.orders.nodes) {
       const locationName = locationNameFromOrder(order);
       for (const item of order.lineItems.nodes) {
