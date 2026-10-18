@@ -26,7 +26,7 @@ export function SalesPage() {
   if (storeId) params.set("storeId", storeId);
   if (from) params.set("from", from);
   if (to) params.set("to", to);
-  const sales = useResource<SalesResponse>(`/api/sales?${params.toString()}`, 15000);
+  const sales = useResource<SalesResponse>(`/api/sales?${params.toString()}`, { refreshMs: 15000, shopify: true });
   const rows = sales.data?.sales ?? [];
   const units = rows.reduce((sum, sale) => sum + sale.quantity, 0);
   const total = roundMoney(rows.reduce((sum, sale) => sum + (sale.lineTotal ?? 0), 0));
@@ -91,7 +91,7 @@ export function SalesPage() {
         </CardContent>
       </Card>
 
-      {sales.loading && !sales.data ? <LoadingBlock label="Loading sales…" /> : null}
+      {sales.loading && !sales.data ? <LoadingBlock label="Retrieving Shopify data…" /> : null}
       {sales.error && !sales.data ? <ErrorBlock message={sales.error} onRetry={() => void sales.reload()} /> : null}
 
       {sales.data ? (

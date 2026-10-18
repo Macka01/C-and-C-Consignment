@@ -10,7 +10,7 @@ import { commissionLabel, formatMoney, formatPeriod, rentLabel } from "@/lib/for
 import type { Dashboard } from "@/lib/types";
 
 export function DashboardPage() {
-  const dashboard = useResource<Dashboard>("/api/dashboard", 15000);
+  const dashboard = useResource<Dashboard>("/api/dashboard", { refreshMs: 15000, shopify: true });
 
   return (
     <div className="grid gap-8">
@@ -21,7 +21,7 @@ export function DashboardPage() {
         action={<RefreshButton onClick={() => void dashboard.reload()} />}
       />
 
-      {dashboard.loading && !dashboard.data ? <LoadingBlock label="Loading the shelves…" /> : null}
+      {dashboard.loading && !dashboard.data ? <LoadingBlock label="Retrieving Shopify data…" /> : null}
       {dashboard.error && !dashboard.data ? <ErrorBlock message={dashboard.error} onRetry={() => void dashboard.reload()} /> : null}
       {dashboard.error && dashboard.data ? (
         <p className="text-sm text-destructive" role="alert">

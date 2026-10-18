@@ -19,7 +19,7 @@ import type { ProductDetail } from "@/lib/types";
 export function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const detail = useResource<ProductDetail>(params.id ? `/api/products/${params.id}` : null);
+  const detail = useResource<ProductDetail>(params.id ? `/api/products/${params.id}` : null, { shopify: true });
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
   const product = detail.data?.product;
@@ -29,7 +29,7 @@ export function ProductDetailPage() {
       <Link href="/products" className="text-sm text-muted-foreground hover:text-foreground">
         Catalog
       </Link>
-      {detail.loading && !detail.data ? <LoadingBlock label="Loading this product…" /> : null}
+      {detail.loading && !detail.data ? <LoadingBlock label="Retrieving Shopify data…" /> : null}
       {detail.error && !detail.data ? <ErrorBlock message={detail.error} onRetry={() => void detail.reload()} /> : null}
       {product && detail.data ? (
         <>

@@ -26,7 +26,7 @@ export function StoreDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
-  const detail = useResource<StoreDetail>(id ? `/api/stores/${id}` : null);
+  const detail = useResource<StoreDetail>(id ? `/api/stores/${id}` : null, { shopify: true });
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [invoicing, setInvoicing] = useState(false);
@@ -38,7 +38,7 @@ export function StoreDetailPage() {
       <Link href="/stores" className="text-sm text-muted-foreground hover:text-foreground">
         All stores
       </Link>
-      {detail.loading && !detail.data ? <LoadingBlock label="Loading this store…" /> : null}
+      {detail.loading && !detail.data ? <LoadingBlock label="Retrieving Shopify data…" /> : null}
       {detail.error && !detail.data ? <ErrorBlock message={detail.error} onRetry={() => void detail.reload()} /> : null}
       {store && detail.data ? (
         <>

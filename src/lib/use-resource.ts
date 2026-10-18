@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useShopifyRetrieving } from "@/components/shopify-retrieving";
 import { api } from "@/lib/api-client";
 
 type ResourceState<T> = {
@@ -9,7 +10,14 @@ type ResourceState<T> = {
   error: string | null;
 };
 
-export function useResource<T>(url: string | null, refreshMs?: number) {
+type ResourceOptions = {
+  refreshMs?: number;
+  shopify?: boolean;
+};
+
+export function useResource<T>(url: string | null, refreshOrOptions?: number | ResourceOptions) {
+  const refreshMs = typeof refreshOrOptions === "number" ? refreshOrOptions : refreshOrOptions?.refreshMs;
+  const shopify = typeof refreshOrOptions === "object" ? Boolean(refreshOrOptions?.shopify) : false;
   const requestId = useRef(0);
   const [state, setState] = useState<ResourceState<T>>({
     url: null,
@@ -77,10 +85,12 @@ export function useResource<T>(url: string | null, refreshMs?: number) {
   }, [refreshMs, reload]);
 
   const matches = state.url === url;
+  const loading = Boolean(url) && !matches;
+  useShopifyRetrieving(shopify && loading);
   return {
     data: matches ? state.data : null,
     error: matches ? state.error : null,
-    loading: Boolean(url) && !matches,
+    loading,
     reload,
   };
 }

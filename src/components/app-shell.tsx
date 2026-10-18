@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ShopifyRetrievingProvider } from "@/components/shopify-retrieving";
 
 const NAV = [
   { href: "/", label: "Dashboard" },
@@ -75,6 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
+    <ShopifyRetrievingProvider>
     <div className="min-h-screen min-w-0 overflow-x-clip">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-sidebar px-4 py-6 md:flex">
         <Brand />
@@ -113,5 +115,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8">{children}</main>
       </div>
     </div>
+    </ShopifyRetrievingProvider>
   );
 }

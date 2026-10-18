@@ -10,7 +10,7 @@ import { formatMoney } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
 export function ProductsPage() {
-  const products = useResource<Product[]>("/api/products");
+  const products = useResource<Product[]>("/api/products", { shopify: true });
   const [open, setOpen] = useState(false);
   const groups = new Map<string, Product[]>();
   for (const product of products.data ?? []) {
@@ -34,7 +34,7 @@ export function ProductsPage() {
           </>
         }
       />
-      {products.loading && !products.data ? <LoadingBlock label="Loading the catalog…" /> : null}
+      {products.loading && !products.data ? <LoadingBlock label="Retrieving Shopify data…" /> : null}
       {products.error && !products.data ? <ErrorBlock message={products.error} onRetry={() => void products.reload()} /> : null}
       {products.data && products.data.length === 0 ? (
         <EmptyBlock
