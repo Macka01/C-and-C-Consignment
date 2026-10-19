@@ -137,3 +137,10 @@
     overflow-x: clip;
   }
 }
+
+@media print {
+  body {
+    background: #fff !important;
+    background-image: none !important;
+  }
+}

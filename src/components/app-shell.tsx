@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ShopifyRetrievingProvider>
     <div className="min-h-screen min-w-0 overflow-x-clip">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-sidebar px-4 py-6 md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-sidebar px-4 py-6 md:flex print:hidden">
         <Brand />
         <div className="mt-8">
           <NavLinks />
@@ -89,8 +89,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="min-w-0 md:pl-64">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/80 bg-background/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur md:hidden">
+      <div className="min-w-0 md:pl-64 print:pl-0">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/80 bg-background/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur md:hidden print:hidden">
           <Button variant="outline" size="icon" className="size-10" onClick={() => setOpen(true)} aria-label="Open menu">
             <Menu />
           </Button>
@@ -113,7 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </SheetContent>
         </Sheet>
-        <main className="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8">{children}</main>
+        <main className="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8 print:max-w-none print:overflow-visible print:px-4 print:py-0">{children}</main>
       </div>
     </div>
     </ShopifyRetrievingProvider>
