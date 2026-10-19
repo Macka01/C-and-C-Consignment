@@ -188,10 +188,11 @@ function StockRow({ line }: { line: StockLine }) {
         <ProductPhoto url={line.imageUrl} name={line.productName} />
         <div className="min-w-0 grid flex-1 gap-1">
           <p className="font-medium">{line.productName}</p>
-          <p className="text-sm text-muted-foreground">
-            {line.productGroup}
-            {line.consigneeCode ? ` · ${line.consigneeCode}` : ""}
+          <p className="text-sm">
+            <span className="text-muted-foreground">Consignee code </span>
+            {line.consigneeCode || "—"}
           </p>
+          {line.productGroup ? <p className="text-sm text-muted-foreground">{line.productGroup}</p> : null}
           <StockListingCounts line={line} />
           <ShopifyMatchNote line={line} className="text-xs text-muted-foreground" />
           <p className="text-sm text-primary">Open product</p>
