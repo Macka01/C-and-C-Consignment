@@ -18,15 +18,21 @@ const ShopifyRetrievingContext = createContext<{
 export function ShopifyRetrievingProvider({ children }: { children: React.ReactNode }) {
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (count <= 0) {
+      setOpen(false);
+      setDismissed(false);
+      return;
+    }
+    if (dismissed) {
       setOpen(false);
       return;
     }
     const timer = window.setTimeout(() => setOpen(true), 150);
     return () => window.clearTimeout(timer);
-  }, [count]);
+  }, [count, dismissed]);
 
   return (
     <ShopifyRetrievingContext.Provider
@@ -36,15 +42,22 @@ export function ShopifyRetrievingProvider({ children }: { children: React.ReactN
       }}
     >
       {children}
-      <Dialog open={open}>
-        <DialogContent showCloseButton={false} className="max-w-sm">
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setDismissed(true);
+        }}
+      >
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <Loader2 className="size-5 shrink-0 animate-spin" aria-hidden />
               Retrieving Shopify data
             </DialogTitle>
             <DialogDescription>
-              Stock, sales, and transfers are being read from Shopify. This can take a little while.
+              Stock, sales, and transfers are being read from Shopify. This can take a little while. Close to keep using
+              the last saved copy while it finishes.
             </DialogDescription>
           </DialogHeader>
         </DialogContent>

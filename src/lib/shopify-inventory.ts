@@ -7,7 +7,17 @@ import {
   shopifyProductName,
   type ShopifyLocationInventory,
 } from "@/lib/shopify-match";
-import { eventsSinceMs, shouldStopEventPages, type ShopifySyncOptions } from "@/lib/shopify-refresh";
+import {
+  eventsSinceMs,
+  lastShopifyCopy,
+  shopifyReadMessage,
+  shopifyRequestSignal,
+  shouldStopEventPages,
+  waitForShopifyPull,
+  SHOPIFY_PULL_TIMEOUT_MS,
+  SHOPIFY_PULL_WAIT_MS,
+  type ShopifySyncOptions,
+} from "@/lib/shopify-refresh";
 import { cacheShopifyProductImages } from "@/lib/shopify-image-cache";
 import { applyShopifyFeed, type ShopifyFeed } from "@/lib/shopify-sync";
 import type { ShopifyOrderLine, ShopifyTransferLine } from "@/lib/shopify-match";
@@ -257,36 +267,49 @@ function itemsFromLevels(nodes: GraphqlLocation["inventoryLevels"]["nodes"]) {
   return items;
 }
 
-async function shopifyGraphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const response = await fetch(`https://${shopDomain()}/admin/api/${API_VERSION}/graphql.json`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Shopify-Access-Token": accessToken(),
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-  const body = (await response.json()) as {
-    data?: T;
-    errors?: Array<{ message: string; extensions?: { code?: string } }>;
-  };
-  if (!response.ok) {
-    throw new Error(`Shopify returned ${response.status}. Check the shop domain and Admin API token.`);
+async function shopifyGraphql<T>(
+  query: string,
+  variables: Record<string, unknown> = {},
+  signal?: AbortSignal,
+): Promise<T> {
+  try {
+    const response = await fetch(`https://${shopDomain()}/admin/api/${API_VERSION}/graphql.json`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": accessToken(),
+      },
+      body: JSON.stringify({ query, variables }),
+      signal: shopifyRequestSignal(signal),
+    });
+    const body = (await response.json()) as {
+      data?: T;
+      errors?: Array<{ message: string; extensions?: { code?: string } }>;
+    };
+    if (!response.ok) {
+      throw new Error(`Shopify returned ${response.status}. Check the shop domain and Admin API token.`);
+    }
+    if (body.data && !body.errors?.length) {
+      return body.data;
+    }
+    if (body.errors?.length) {
+      throw new Error(body.errors.map((error) => error.message).join(" "));
+    }
+    throw new Error("Shopify returned no inventory data.");
+  } catch (error) {
+    throw new Error(shopifyReadMessage(error));
   }
-  if (body.data && !body.errors?.length) {
-    return body.data;
-  }
-  if (body.errors?.length) {
-    throw new Error(body.errors.map((error) => error.message).join(" "));
-  }
-  throw new Error("Shopify returned no inventory data.");
 }
 
-async function loadLocationLevels(location: GraphqlLocation): Promise<ShopifyLocationInventory> {
+async function loadLocationLevels(location: GraphqlLocation, signal?: AbortSignal): Promise<ShopifyLocationInventory> {
   const items = itemsFromLevels(location.inventoryLevels.nodes);
   let cursor = location.inventoryLevels.pageInfo.hasNextPage ? location.inventoryLevels.pageInfo.endCursor : null;
   while (cursor) {
-    const extra = await shopifyGraphql<{ location: GraphqlLocation | null }>(LEVELS_QUERY, { id: location.id, cursor });
+    const extra = await shopifyGraphql<{ location: GraphqlLocation | null }>(
+      LEVELS_QUERY,
+      { id: location.id, cursor },
+      signal,
+    );
     const page = extra.location?.inventoryLevels;
     if (!page) break;
     items.push(...itemsFromLevels(page.nodes));
@@ -295,14 +318,14 @@ async function loadLocationLevels(location: GraphqlLocation): Promise<ShopifyLoc
   return { locationId: location.id, locationName: location.name, items };
 }
 
-async function fetchLocations(): Promise<ShopifyLocationInventory[]> {
+async function fetchLocations(signal?: AbortSignal): Promise<ShopifyLocationInventory[]> {
   const locations: ShopifyLocationInventory[] = [];
   let cursor: string | null = null;
   do {
     const page: {
       locations: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GraphqlLocation[] };
-    } = await shopifyGraphql(LOCATION_QUERY, { cursor });
-    locations.push(...(await Promise.all(page.locations.nodes.map((node) => loadLocationLevels(node)))));
+    } = await shopifyGraphql(LOCATION_QUERY, { cursor }, signal);
+    locations.push(...(await Promise.all(page.locations.nodes.map((node) => loadLocationLevels(node, signal)))));
     cursor = page.locations.pageInfo.hasNextPage ? page.locations.pageInfo.endCursor : null;
   } while (cursor);
   return locations;
@@ -331,9 +354,13 @@ type OrdersPage = {
   orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GraphqlOrder[] };
 };
 
-async function tokenScopes(): Promise<string[]> {
+async function tokenScopes(signal?: AbortSignal): Promise<string[]> {
   try {
-    const data: { currentAppInstallation: { accessScopes: Array<{ handle: string }> } } = await shopifyGraphql(SCOPES_QUERY);
+    const data: { currentAppInstallation: { accessScopes: Array<{ handle: string }> } } = await shopifyGraphql(
+      SCOPES_QUERY,
+      {},
+      signal,
+    );
     return data.currentAppInstallation.accessScopes.map((scope) => scope.handle);
   } catch {
     return [];
@@ -350,13 +377,13 @@ function explainOrdersError(shopifyText: string, scopes: string[]) {
   return shopifyText;
 }
 
-async function fetchOrders(sinceMs: number | null): Promise<ShopifyOrderLine[]> {
+async function fetchOrders(sinceMs: number | null, signal?: AbortSignal): Promise<ShopifyOrderLine[]> {
   const lines: ShopifyOrderLine[] = [];
   let cursor: string | null = null;
   const maxPages = sinceMs == null ? FULL_EVENT_PAGES : INCREMENTAL_EVENT_PAGES;
   try {
     for (let page = 0; page < maxPages; page += 1) {
-      const data: OrdersPage = await shopifyGraphql(ORDERS_QUERY, { cursor });
+      const data: OrdersPage = await shopifyGraphql(ORDERS_QUERY, { cursor }, signal);
       if (!data.orders) {
         throw new Error("Shopify returned no orders.");
       }
@@ -396,11 +423,11 @@ async function fetchOrders(sinceMs: number | null): Promise<ShopifyOrderLine[]> 
     return lines;
   } catch (error) {
     const shopifyText = error instanceof Error ? error.message : "Shopify sales could not be read.";
-    throw new Error(explainOrdersError(shopifyText, await tokenScopes()));
+    throw new Error(explainOrdersError(shopifyText, await tokenScopes(signal)));
   }
 }
 
-async function fetchTransfers(sinceMs: number | null): Promise<ShopifyTransferLine[]> {
+async function fetchTransfers(sinceMs: number | null, signal?: AbortSignal): Promise<ShopifyTransferLine[]> {
   const lines: ShopifyTransferLine[] = [];
   let cursor: string | null = null;
   const maxPages = sinceMs == null ? FULL_EVENT_PAGES : INCREMENTAL_EVENT_PAGES;
@@ -424,7 +451,7 @@ async function fetchTransfers(sinceMs: number | null): Promise<ShopifyTransferLi
     };
   };
   for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
-    const page: TransferPage = await shopifyGraphql(TRANSFER_QUERY, { cursor });
+    const page: TransferPage = await shopifyGraphql(TRANSFER_QUERY, { cursor }, signal);
     for (const transfer of page.inventoryTransfers.nodes) {
       const originName = transfer.origin?.location?.name ?? transfer.origin?.name ?? "";
       const destinationName = transfer.destination?.location?.name ?? transfer.destination?.name ?? "";
@@ -466,13 +493,14 @@ async function fetchShopifyFeed(): Promise<{ feed: ShopifyFeed; warning: string 
 
   const sinceMs = eventsSinceMs(getAppMeta(EVENTS_SYNCED_KEY));
   const warnings: string[] = [];
+  const pull = AbortSignal.timeout(SHOPIFY_PULL_TIMEOUT_MS);
   const [locations, orders, transfers] = await Promise.all([
-    fetchLocations(),
-    fetchOrders(sinceMs).catch((error) => {
+    fetchLocations(pull),
+    fetchOrders(sinceMs, pull).catch((error) => {
       warnings.push(error instanceof Error ? error.message : "Shopify sales could not be read.");
       return [] as ShopifyOrderLine[];
     }),
-    fetchTransfers(sinceMs).catch((error) => {
+    fetchTransfers(sinceMs, pull).catch((error) => {
       warnings.push(error instanceof Error ? error.message : "Shopify transfers could not be read.");
       return [] as ShopifyTransferLine[];
     }),
@@ -503,7 +531,7 @@ async function refreshFeed(key: string): Promise<FeedResult> {
     state.cache = { key, at: Date.now(), ...result };
     return result;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Shopify could not be read.";
+    const message = shopifyReadMessage(error);
     const result: FeedResult = { feed: null, error: message, warning: null };
     state.cache = { key, at: Date.now(), ...result };
     return result;
@@ -533,7 +561,11 @@ async function loadFeed(options?: ShopifySyncOptions): Promise<FeedResult> {
   if (!options?.wait && cache && cache.key === key) {
     return snapshot(cache);
   }
-  return state.inflight;
+  return waitForShopifyPull(
+    state.inflight,
+    () => lastShopifyCopy(state.cache?.key === key ? state.cache : undefined),
+    options?.wait ? SHOPIFY_PULL_TIMEOUT_MS : SHOPIFY_PULL_WAIT_MS,
+  );
 }
 
 function attachLine(line: StockLine, locations: ShopifyLocationInventory[] | null): StockLine {
@@ -549,12 +581,11 @@ export async function withShopifyStock<T extends StoreDetail | ProductDetail>(
   load: () => T,
   options?: ShopifySyncOptions,
 ): Promise<T> {
-  const shopify = await syncFromShopify(options);
-  const { feed } = await loadFeed(options);
+  const { feed, error, warning } = await loadFeed(options);
   const detail = load();
   return {
     ...detail,
-    shopify,
+    shopify: { configured: shopifyConfigured(), error, warning },
     stock: detail.stock
       .map((line) => attachLine(line, feed?.locations ?? null))
       .filter((line) => line.shopifyMatch !== "no_product"),
