@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   // Dev assets are tied to localhost. Phones and 127.0.0.1 need an explicit allow.
   allowedDevOrigins: devOrigins(),
+  // The Shopify status sits at the bottom of the sidebar. Keep the dev badge off it.
+  devIndicators: { position: "top-right" },
   serverExternalPackages: ["better-sqlite3", "pdf-lib"],
   outputFileTracingIncludes: {
     "/*": [

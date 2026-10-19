@@ -22,6 +22,7 @@ import {
 import { cacheShopifyProductImages } from "@/lib/shopify-image-cache";
 import { applyShopifyFeed, type ShopifyFeed } from "@/lib/shopify-sync";
 import type { ShopifyOrderLine, ShopifyTransferLine } from "@/lib/shopify-match";
+import type { ShopifyActivity } from "@/lib/shopify-status";
 import type { ProductDetail, ShopifyStockStatus, StockLine, StoreDetail } from "@/lib/types";
 
 const API_VERSION = "2025-10";
@@ -47,6 +48,7 @@ type ShopifyRuntime = {
   cache?: Cache;
   inflight?: Promise<FeedResult>;
   inflightKey?: string;
+  savedCopy?: boolean;
 };
 
 const globalForShopify = globalThis as unknown as { consignmentShopify?: ShopifyRuntime };
@@ -541,6 +543,7 @@ async function refreshFeed(key: string): Promise<FeedResult> {
     if (feed) {
       const applied = applyShopifyFeed(feed);
       await cacheShopifyProductImages(applied.images);
+      state.savedCopy = true;
     }
     const result: FeedResult = { feed, error: null, warning };
     state.cache = { key, at: Date.now(), ...result };
@@ -592,6 +595,36 @@ async function loadFeed(options?: ShopifySyncOptions): Promise<FeedResult> {
 
 function attachLine(line: StockLine, locations: ShopifyLocationInventory[] | null): StockLine {
   return { ...line, ...compareStockToShopify(line, locations) };
+}
+
+function hasSavedShopifyCopy(state: ShopifyRuntime, cache: Cache | undefined) {
+  if (state.savedCopy || cache?.feed) {
+    state.savedCopy = true;
+    return true;
+  }
+  if (getAppMeta(EVENTS_SYNCED_KEY)) {
+    state.savedCopy = true;
+    return true;
+  }
+  return false;
+}
+
+/** Start a background pull when the copy is stale, then report what the sidebar should say. */
+export async function readShopifyActivity(): Promise<ShopifyActivity> {
+  if (!shopifyConfigured()) {
+    return { configured: false, inflight: false, hasSavedCopy: false, error: null, warning: null };
+  }
+  const result = await loadFeed();
+  const state = shopifyState();
+  const key = cacheKey();
+  const cache = state.cache?.key === key ? state.cache : undefined;
+  return {
+    configured: true,
+    inflight: Boolean(state.inflight),
+    hasSavedCopy: hasSavedShopifyCopy(state, cache),
+    error: state.inflight ? null : result.error,
+    warning: state.inflight ? null : result.warning,
+  };
 }
 
 export async function syncFromShopify(options?: ShopifySyncOptions): Promise<ShopifyStockStatus> {
