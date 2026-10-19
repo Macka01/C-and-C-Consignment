@@ -377,6 +377,12 @@ export function scrubShopifyDefaultTitleNames() {
         if (donorId !== keepId) mergeDuplicateProduct(db, keepId, donorId);
       }
     }
+    db.prepare(
+      `UPDATE store_stock SET consignee_code = ''
+       WHERE TRIM(consignee_code) = ''
+          OR consignee_code = '—'
+          OR LOWER(consignee_code) = 'default title'`,
+    ).run();
   });
   write();
 }
@@ -732,24 +738,19 @@ export function removeShelf(storeId: number, productId: number) {
   getDb().prepare(`DELETE FROM store_stock WHERE store_id = ? AND product_id = ?`).run(storeId, productId);
 }
 
-export function ensureShopifyStock(storeId: number, productId: number, consigneeCode: string, quantity: number) {
+export function ensureShopifyStock(storeId: number, productId: number, quantity: number) {
   const db = getDb();
   const qty = Math.max(0, Math.round(quantity));
   const existing = db
-    .prepare(`SELECT id, consignee_code FROM store_stock WHERE store_id = ? AND product_id = ?`)
-    .get(storeId, productId) as { id: number; consignee_code: string } | undefined;
+    .prepare(`SELECT id FROM store_stock WHERE store_id = ? AND product_id = ?`)
+    .get(storeId, productId) as { id: number } | undefined;
   if (existing) {
-    db.prepare(`UPDATE store_stock SET quantity = ?, consignee_code = ? WHERE id = ?`).run(
-      qty,
-      keepConsigneeCode(existing.consignee_code, consigneeCode),
-      existing.id,
-    );
+    db.prepare(`UPDATE store_stock SET quantity = ? WHERE id = ?`).run(qty, existing.id);
     return;
   }
-  db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (?, ?, ?, ?)`).run(
+  db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (?, ?, '', ?)`).run(
     storeId,
     productId,
-    keepConsigneeCode("", consigneeCode),
     qty,
   );
 }

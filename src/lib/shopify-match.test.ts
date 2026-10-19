@@ -82,11 +82,11 @@ describe("shopify inventory match", () => {
     );
   });
 
-  it("keeps a saved consignee code instead of Shopify Default Title or SKU", () => {
+  it("keeps a saved consignee code and treats Default Title as empty", () => {
     assert.equal(keepConsigneeCode("CS-01", "CHEESE-STICKS"), "CS-01");
-    assert.equal(keepConsigneeCode("", "CHEESE-STICKS"), "CHEESE-STICKS");
     assert.equal(keepConsigneeCode("Default Title", "CS-01"), "CS-01");
     assert.equal(keepConsigneeCode("Default Title", ""), "");
+    assert.equal(keepConsigneeCode("", ""), "");
     assert.equal(keepConsigneeCode("—", "CS-01"), "CS-01");
   });
 

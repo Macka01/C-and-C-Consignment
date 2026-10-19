@@ -46,9 +46,17 @@ describe("consignment stock listing", () => {
     assert.equal(listing.storeName, "Harbour Linen");
     assert.equal(listing.reportDate, "19 Oct 2026");
     assert.equal(listing.rows[0]?.productName, "Flax Mug - Khaki");
+    assert.equal(listing.rows[0]?.consigneeCode, "HLB-MUG-KH");
     assert.equal(listing.rows[0]?.quantityOnHand, 8);
     assert.equal(listing.rows[1]?.quantityOnHand, 10);
     assert.equal(listing.totalQuantity, 18);
+  });
+
+  it("leaves consignee code blank when none was saved", () => {
+    const listing = buildStockListing("Love Local", "2026-10-19", [
+      line({ productName: "Cheese Sticks", quantity: 2, consigneeCode: "" }),
+    ]);
+    assert.equal(listing.rows[0]?.consigneeCode, "");
   });
 
   it("keeps only the first sentence of the description", () => {

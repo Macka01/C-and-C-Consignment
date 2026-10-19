@@ -61,7 +61,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
       const product = ensureShopifyProduct(ref);
       if (product.created) createdProducts += 1;
       rememberImage(product.id, ref.imageUrl);
-      ensureShopifyStock(store.id, product.id, ref.sku ?? "", qty);
+      ensureShopifyStock(store.id, product.id, qty);
     }
   }
 
@@ -131,7 +131,7 @@ function dropShelvesShopifyDoesNotStock(storeId: number, location: ShopifyLocati
   const keep = new Set<number>();
   for (const [productId, qty] of onHandByProduct) {
     if (staysOnMatchedShelf(qty, shopifyMovementCountAtStore(storeId, productId))) {
-      if (qty <= 0) ensureShopifyStock(storeId, productId, "", 0);
+      if (qty <= 0) ensureShopifyStock(storeId, productId, 0);
       keep.add(productId);
     }
   }
@@ -139,7 +139,7 @@ function dropShelvesShopifyDoesNotStock(storeId: number, location: ShopifyLocati
     if (keep.has(productId)) continue;
     const qty = onHandByProduct.get(productId) ?? null;
     if (!staysOnMatchedShelf(qty, shopifyMovementCountAtStore(storeId, productId))) continue;
-    if (!onHandByProduct.has(productId)) ensureShopifyStock(storeId, productId, "", 0);
+    if (!onHandByProduct.has(productId)) ensureShopifyStock(storeId, productId, 0);
     keep.add(productId);
   }
   for (const productId of storeShelfProductIds(storeId)) {

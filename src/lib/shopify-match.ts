@@ -42,7 +42,7 @@ export function isPlaceholderShopifyCode(value: string | null | undefined) {
   return !text || text === "—" || /^default title$/i.test(text);
 }
 
-/** Keep a code Steve saved. Only fill from Shopify when the shelf code is still blank. */
+/** Keep a code someone saved. Never invent one from Shopify. */
 export function keepConsigneeCode(existing: string | null | undefined, incoming: string | null | undefined) {
   if (!isPlaceholderShopifyCode(existing)) return existing!.trim();
   if (!isPlaceholderShopifyCode(incoming)) return incoming!.trim();

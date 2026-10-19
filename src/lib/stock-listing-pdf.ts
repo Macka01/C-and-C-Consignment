@@ -48,6 +48,7 @@ async function embedLogo(doc: PDFDocument, file: string) {
 function cellText(row: StockListing["rows"][number], key: (typeof COLUMNS)[number]["key"]) {
   if (key === "price") return formatMoney(row.price);
   if (key === "quantityOnHand") return String(row.quantityOnHand);
+  if (key === "consigneeCode") return row.consigneeCode;
   return row[key] || "—";
 }
 

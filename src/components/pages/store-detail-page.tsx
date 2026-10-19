@@ -190,7 +190,7 @@ function StockRow({ line }: { line: StockLine }) {
           <p className="font-medium">{line.productName}</p>
           <p className="text-sm">
             <span className="text-muted-foreground">Consignee code </span>
-            {line.consigneeCode || "—"}
+            {line.consigneeCode}
           </p>
           {line.productGroup ? <p className="text-sm text-muted-foreground">{line.productGroup}</p> : null}
           <StockListingCounts line={line} />
