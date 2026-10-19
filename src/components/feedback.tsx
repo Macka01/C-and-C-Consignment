@@ -20,10 +20,10 @@ export function PageHeader({
         {eyebrow ? (
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">{eyebrow}</p>
         ) : null}
-        <h1 className="font-heading text-2xl font-medium tracking-tight text-balance text-foreground sm:text-3xl">
+        <h1 className="font-heading text-3xl font-medium tracking-tight text-balance text-foreground sm:text-4xl">
           {title}
         </h1>
-        {lede ? <p className="mt-2 max-w-2xl text-sm leading-6 text-pretty text-muted-foreground">{lede}</p> : null}
+        {lede ? <p className="mt-2 max-w-2xl text-base leading-7 text-pretty text-muted-foreground">{lede}</p> : null}
       </div>
       {action ? <div className="flex shrink-0 flex-wrap gap-2">{action}</div> : null}
     </div>

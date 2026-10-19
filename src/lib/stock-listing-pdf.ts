@@ -6,10 +6,10 @@ import { pdfSafeText, wrapLines, type StockListing } from "@/lib/stock-listing";
 
 const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 42;
-const LOGO_SIZE = 52;
-const BRAND_SIZE = 16;
-const TITLE_SIZE = 13;
-const META_SIZE = 10;
+const LOGO_SIZE = 72;
+const BRAND_SIZE = 28;
+const TITLE_SIZE = 16;
+const META_SIZE = 11;
 const HEADER_SIZE = 8;
 const BODY_SIZE = 9;
 const LINE = 12;
