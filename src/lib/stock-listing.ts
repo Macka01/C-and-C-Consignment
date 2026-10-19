@@ -48,6 +48,38 @@ export function stockListingFilename(storeName: string, reportDateIso: string) {
   return `consignment-stock-listing-${slug || "store"}-${reportDateIso}.pdf`;
 }
 
+const winAnsiSwap: Record<string, string> = {
+  "\u2018": "'",
+  "\u2019": "'",
+  "\u201A": ",",
+  "\u201C": '"',
+  "\u201D": '"',
+  "\u2013": "-",
+  "\u2014": "-",
+  "\u2011": "-",
+  "\u2212": "-",
+  "\u2026": "...",
+  "\u00A0": " ",
+  "\u2022": "*",
+  "\u2122": "(TM)",
+};
+
+/** Helvetica on the PDF only speaks WinAnsi. Swap punctuation, drop the rest. */
+export function pdfSafeText(text: string) {
+  let out = "";
+  for (const ch of text) {
+    if (winAnsiSwap[ch]) {
+      out += winAnsiSwap[ch];
+      continue;
+    }
+    const code = ch.codePointAt(0) ?? 0;
+    if (code === 0x09 || (code >= 0x20 && code <= 0x7e) || (code >= 0xa0 && code <= 0xff)) {
+      out += ch;
+    }
+  }
+  return out;
+}
+
 export function firstSentence(text: string) {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return "";
@@ -106,16 +138,16 @@ export function buildStockListing(
 ): StockListing {
   const rows = [...stock]
     .map((line) => ({
-      productName: line.productName,
-      description: firstSentence(line.description),
-      consigneeCode: line.consigneeCode,
+      productName: pdfSafeText(line.productName),
+      description: pdfSafeText(firstSentence(line.description)),
+      consigneeCode: pdfSafeText(line.consigneeCode),
       price: line.retailPrice,
       quantityOnHand: line.shopifyQtyOnHand ?? line.quantity,
     }))
     .sort((a, b) => a.productName.localeCompare(b.productName, "en", { sensitivity: "base" }));
   return {
     title: STOCK_LISTING_TITLE,
-    storeName,
+    storeName: pdfSafeText(storeName),
     reportDateIso,
     reportDate: displayDate(reportDateIso),
     rows,

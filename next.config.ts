@@ -27,6 +27,9 @@ const nextConfig: NextConfig = {
       "./public/cotton-and-clay-logo.png",
       "./public/icon-192.png",
       "./public/icon-512.png",
+      "./node_modules/pdf-lib/**/*",
+      "./node_modules/@pdf-lib/**/*",
+      "./node_modules/pako/**/*",
     ],
   },
   turbopack: {

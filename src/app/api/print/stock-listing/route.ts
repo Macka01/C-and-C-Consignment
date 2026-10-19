@@ -5,6 +5,16 @@ import { withShopifyStock } from "@/lib/shopify-inventory";
 import { buildStockListing, calendarDateInSydney, stockListingFilename } from "@/lib/stock-listing";
 import { buildStockListingPdf } from "@/lib/stock-listing-pdf";
 import { positiveId } from "@/lib/validate";
+import type { StoreDetail } from "@/lib/types";
+
+async function stockForListing(storeId: number): Promise<StoreDetail> {
+  try {
+    return await withShopifyStock(() => getStoreDetail(storeId));
+  } catch (error) {
+    console.error("Stock listing used tracker quantities after Shopify failed.", error);
+    return getStoreDetail(storeId);
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +23,7 @@ export async function GET(request: Request) {
     const raw = url.searchParams.get("storeId");
     if (!raw) throw new HttpError("Choose a store.", 400);
     const storeId = positiveId(raw, "Store");
-    const detail = await withShopifyStock(() => getStoreDetail(storeId), { wait: true });
+    const detail = await stockForListing(storeId);
     const listing = buildStockListing(detail.store.name, calendarDateInSydney(), detail.stock);
     const pdf = await buildStockListingPdf(listing);
     const filename = stockListingFilename(listing.storeName, listing.reportDateIso);
@@ -26,6 +36,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    console.error("Stock listing PDF failed.", error);
     return fail(error);
   }
 }

@@ -34,6 +34,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/pdf-lib ./node_modules/pdf-lib
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@pdf-lib ./node_modules/@pdf-lib
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/pako ./node_modules/pako
 COPY server/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod 755 /app/docker-entrypoint.sh && chown nextjs:nodejs /app/docker-entrypoint.sh
 

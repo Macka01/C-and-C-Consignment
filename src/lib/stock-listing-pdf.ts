@@ -2,14 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { formatMoney } from "@/lib/format";
-import { wrapLines, type StockListing } from "@/lib/stock-listing";
+import { pdfSafeText, wrapLines, type StockListing } from "@/lib/stock-listing";
 
 const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 42;
-const LOGO_SIZE = 72;
-const BRAND_SIZE = 28;
-const TITLE_SIZE = 16;
-const META_SIZE = 11;
+const LOGO_SIZE = 52;
+const BRAND_SIZE = 16;
+const TITLE_SIZE = 13;
+const META_SIZE = 10;
 const HEADER_SIZE = 8;
 const BODY_SIZE = 9;
 const LINE = 12;
@@ -68,9 +68,10 @@ function drawText(
   align: "left" | "right" = "left",
   width?: number,
 ) {
-  const textWidth = font.widthOfTextAtSize(text, size);
+  const safe = pdfSafeText(text);
+  const textWidth = font.widthOfTextAtSize(safe, size);
   const left = align === "right" && width != null ? x + width - textWidth : x;
-  page.drawText(text, { x: left, y, size, font, color });
+  page.drawText(safe, { x: left, y, size, font, color });
 }
 
 export async function buildStockListingPdf(listing: StockListing) {
@@ -80,7 +81,14 @@ export async function buildStockListingPdf(listing: StockListing) {
     bold: await doc.embedFont(StandardFonts.HelveticaBold),
   };
   const logoFile = cottonClayLogoPath();
-  const logo = logoFile ? await embedLogo(doc, logoFile) : null;
+  let logo = null;
+  if (logoFile) {
+    try {
+      logo = await embedLogo(doc, logoFile);
+    } catch (error) {
+      console.error("Stock listing logo could not be embedded.", error);
+    }
+  }
   const contentWidth = COLUMNS.reduce((sum, column) => sum + column.width, 0);
   const tableLeft = MARGIN;
   const headerLines = COLUMNS.map((column) =>

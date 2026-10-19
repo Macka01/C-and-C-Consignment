@@ -4,6 +4,7 @@ import {
   buildStockListing,
   calendarDateInSydney,
   firstSentence,
+  pdfSafeText,
   stockListingFilename,
   wrapLines,
 } from "./stock-listing.ts";
@@ -44,7 +45,7 @@ describe("consignment stock listing", () => {
     assert.equal(listing.title, "Consignment Stock Listing");
     assert.equal(listing.storeName, "Harbour Linen");
     assert.equal(listing.reportDate, "19 Oct 2026");
-    assert.equal(listing.rows[0]?.productName, "Flax Mug — Khaki");
+    assert.equal(listing.rows[0]?.productName, "Flax Mug - Khaki");
     assert.equal(listing.rows[0]?.quantityOnHand, 8);
     assert.equal(listing.rows[1]?.quantityOnHand, 10);
     assert.equal(listing.totalQuantity, 18);
@@ -65,6 +66,12 @@ describe("consignment stock listing", () => {
       }),
     ]);
     assert.equal(listing.rows[0]?.description, "Handmade serving bowl with a gloss white interior.");
+  });
+
+  it("strips characters Helvetica cannot print", () => {
+    assert.equal(pdfSafeText("Flax Mug — Khaki"), "Flax Mug - Khaki");
+    assert.equal(pdfSafeText("smart ‘quotes’"), "smart 'quotes'");
+    assert.equal(pdfSafeText("bowl 🪵"), "bowl ");
   });
 
   it("names the PDF from the store and the report date", () => {

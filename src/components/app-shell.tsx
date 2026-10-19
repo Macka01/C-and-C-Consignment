@@ -53,7 +53,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function Brand() {
   return (
     <div>
-      <p className="font-heading text-2xl leading-none text-foreground">Cotton & Clay</p>
+      <p className="font-heading text-xl leading-none text-foreground">Cotton & Clay</p>
       <p className="mt-1 text-xs tracking-[0.14em] text-muted-foreground uppercase">Consignment tracker</p>
     </div>
   );
