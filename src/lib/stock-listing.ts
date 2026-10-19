@@ -48,6 +48,13 @@ export function stockListingFilename(storeName: string, reportDateIso: string) {
   return `consignment-stock-listing-${slug || "store"}-${reportDateIso}.pdf`;
 }
 
+export function firstSentence(text: string) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  const match = normalized.match(/^.*?[.!?](?=\s|$)/);
+  return (match ? match[0] : normalized).trim();
+}
+
 export function wrapLines(text: string, widthOf: (value: string) => number, maxWidth: number) {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return [""];
@@ -100,7 +107,7 @@ export function buildStockListing(
   const rows = [...stock]
     .map((line) => ({
       productName: line.productName,
-      description: line.description,
+      description: firstSentence(line.description),
       consigneeCode: line.consigneeCode,
       price: line.retailPrice,
       quantityOnHand: line.shopifyQtyOnHand ?? line.quantity,

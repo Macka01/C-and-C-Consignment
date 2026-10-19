@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   buildStockListing,
   calendarDateInSydney,
+  firstSentence,
   stockListingFilename,
   wrapLines,
 } from "./stock-listing.ts";
@@ -47,6 +48,23 @@ describe("consignment stock listing", () => {
     assert.equal(listing.rows[0]?.quantityOnHand, 8);
     assert.equal(listing.rows[1]?.quantityOnHand, 10);
     assert.equal(listing.totalQuantity, 18);
+  });
+
+  it("keeps only the first sentence of the description", () => {
+    assert.equal(
+      firstSentence("Handmade serving bowl with a gloss white interior. Raw speckle exterior."),
+      "Handmade serving bowl with a gloss white interior.",
+    );
+    assert.equal(firstSentence("Matte flax mug."), "Matte flax mug.");
+    assert.equal(firstSentence("No stop here"), "No stop here");
+    const listing = buildStockListing("Harbour Linen", "2026-10-19", [
+      line({
+        productName: "Everyday Bowl — Speckle Grey",
+        quantity: 5,
+        description: "Handmade serving bowl with a gloss white interior. Raw speckle exterior.",
+      }),
+    ]);
+    assert.equal(listing.rows[0]?.description, "Handmade serving bowl with a gloss white interior.");
   });
 
   it("names the PDF from the store and the report date", () => {
