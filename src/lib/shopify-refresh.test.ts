@@ -7,11 +7,12 @@ import {
   shopifyReadMessage,
   shopifyRequestSignal,
   shopifySyncOptions,
+  nextPageCursor,
   shouldStopEventPages,
   waitForShopifyPull,
   SHOPIFY_EVENT_OVERLAP_MS,
+  SHOPIFY_GRAPHQL_TIMEOUT_MS,
   SHOPIFY_PULL_TIMEOUT_MS,
-  SHOPIFY_PULL_WAIT_MS,
   SHOPIFY_TIMEOUT_MESSAGE,
 } from "./shopify-refresh.ts";
 
@@ -41,10 +42,19 @@ describe("shopify pull timeout", () => {
     assert.deepEqual(shopifySyncOptions(new Request("http://local/api/products?refresh=1")), { wait: true });
   });
 
-  it("gives refresh a longer wait than the first page after a restart", () => {
-    assert.equal(SHOPIFY_PULL_WAIT_MS, 15_000);
+  it("lets refresh wait longer than one GraphQL call", () => {
+    assert.equal(SHOPIFY_GRAPHQL_TIMEOUT_MS, 20_000);
     assert.equal(SHOPIFY_PULL_TIMEOUT_MS, 60_000);
-    assert.ok(SHOPIFY_PULL_TIMEOUT_MS > SHOPIFY_PULL_WAIT_MS);
+    assert.ok(SHOPIFY_PULL_TIMEOUT_MS > SHOPIFY_GRAPHQL_TIMEOUT_MS);
+    assert.equal(shopifySyncOptions(new Request("http://local/api/products")).wait, false);
+  });
+
+  it("stops when Shopify repeats a page cursor", () => {
+    const seen = new Set<string>();
+    assert.equal(nextPageCursor(false, "cursor-a", seen), null);
+    assert.equal(nextPageCursor(true, "cursor-a", seen), "cursor-a");
+    assert.equal(nextPageCursor(true, "cursor-a", seen), null);
+    assert.equal(nextPageCursor(true, null, seen), null);
   });
 
   it("turns a hung Admin API abort into the last-copy message", () => {

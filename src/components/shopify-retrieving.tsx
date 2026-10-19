@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -19,6 +19,9 @@ export function ShopifyRetrievingProvider({ children }: { children: React.ReactN
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const begin = useCallback(() => setCount((n) => n + 1), []);
+  const end = useCallback(() => setCount((n) => Math.max(0, n - 1)), []);
+  const api = useMemo(() => ({ begin, end }), [begin, end]);
 
   useEffect(() => {
     if (count <= 0) {
@@ -34,13 +37,14 @@ export function ShopifyRetrievingProvider({ children }: { children: React.ReactN
     return () => window.clearTimeout(timer);
   }, [count, dismissed]);
 
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => setDismissed(true), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
   return (
-    <ShopifyRetrievingContext.Provider
-      value={{
-        begin: () => setCount((n) => n + 1),
-        end: () => setCount((n) => Math.max(0, n - 1)),
-      }}
-    >
+    <ShopifyRetrievingContext.Provider value={api}>
       {children}
       <Dialog
         open={open}

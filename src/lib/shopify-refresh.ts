@@ -4,7 +4,7 @@ export function shopifySyncOptions(request: Request): ShopifySyncOptions {
   return { wait: new URL(request.url).searchParams.get("refresh") === "1" };
 }
 
-/** First page after a restart returns the last SQLite copy instead of waiting forever. */
+/** Kept for the pull helper default. Opening a page does not wait on Shopify. */
 export const SHOPIFY_PULL_WAIT_MS = 15_000;
 /** Refresh waits longer, but the Admin API read still has a hard stop. */
 export const SHOPIFY_PULL_TIMEOUT_MS = 60_000;
@@ -77,4 +77,17 @@ export function shouldStopEventPages(oldestOnPageIso: string | null | undefined,
   if (sinceMs == null || !oldestOnPageIso) return false;
   const t = Date.parse(oldestOnPageIso);
   return Number.isFinite(t) && t < sinceMs;
+}
+
+/** Advance a Shopify cursor. A repeated cursor would page forever and keep Products on the popup. */
+export function nextPageCursor(
+  hasNextPage: boolean,
+  endCursor: string | null | undefined,
+  seen: Set<string>,
+) {
+  if (!hasNextPage) return null;
+  const cursor = endCursor?.trim() ?? "";
+  if (!cursor || seen.has(cursor)) return null;
+  seen.add(cursor);
+  return cursor;
 }

@@ -13,7 +13,11 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, { ...init, headers, cache: "no-store" });
-  } catch {
+  } catch (error) {
+    const name = error instanceof Error ? error.name : "";
+    if (name === "TimeoutError" || name === "AbortError") {
+      throw new ApiError("The page took too long. Try again.");
+    }
     throw new ApiError("The tracker could not be reached. Check that this device is on the same network as the server.");
   }
   const isJson = (response.headers.get("content-type") ?? "").includes("application/json");

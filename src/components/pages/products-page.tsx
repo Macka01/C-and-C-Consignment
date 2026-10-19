@@ -13,7 +13,7 @@ import { formatMoney } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
 export function ProductsPage() {
-  const products = useResource<Product[]>("/api/products", { shopify: true });
+  const products = useResource<Product[]>("/api/products", { refreshMs: 15000, shopify: true });
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const catalog = products.data;

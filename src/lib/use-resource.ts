@@ -19,6 +19,13 @@ function withRefreshParam(url: string) {
   return `${url}${url.includes("?") ? "&" : "?"}refresh=1`;
 }
 
+const PAGE_OPEN_TIMEOUT_MS = 20_000;
+const REFRESH_TIMEOUT_MS = 70_000;
+
+function requestSignal(timeoutMs: number) {
+  return AbortSignal.timeout(timeoutMs);
+}
+
 export function useResource<T>(url: string | null, refreshOrOptions?: number | ResourceOptions) {
   const refreshMs = typeof refreshOrOptions === "number" ? refreshOrOptions : refreshOrOptions?.refreshMs;
   const shopify = typeof refreshOrOptions === "object" ? Boolean(refreshOrOptions?.shopify) : false;
@@ -35,7 +42,9 @@ export function useResource<T>(url: string | null, refreshOrOptions?: number | R
     const requested = url;
     const fetchUrl = opts?.fresh ? withRefreshParam(url) : url;
     try {
-      const next = await api<T>(fetchUrl);
+      const next = await api<T>(fetchUrl, {
+        signal: requestSignal(opts?.fresh ? REFRESH_TIMEOUT_MS : PAGE_OPEN_TIMEOUT_MS),
+      });
       if (requestId.current !== id) return;
       setState({ url: requested, data: next, error: null });
     } catch (err) {
@@ -54,9 +63,11 @@ export function useResource<T>(url: string | null, refreshOrOptions?: number | R
     const id = ++requestId.current;
     const requested = url;
     let cancelled = false;
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, requestSignal(PAGE_OPEN_TIMEOUT_MS)]);
     void (async () => {
       try {
-        const next = await api<T>(requested);
+        const next = await api<T>(requested, { signal });
         if (cancelled || requestId.current !== id) return;
         setState({ url: requested, data: next, error: null });
       } catch (err) {
@@ -70,6 +81,7 @@ export function useResource<T>(url: string | null, refreshOrOptions?: number | R
     })();
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [url]);
 

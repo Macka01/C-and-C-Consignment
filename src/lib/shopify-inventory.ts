@@ -10,12 +10,12 @@ import {
 import {
   eventsSinceMs,
   lastShopifyCopy,
+  nextPageCursor,
   shopifyReadMessage,
   shopifyRequestSignal,
   shouldStopEventPages,
   waitForShopifyPull,
   SHOPIFY_PULL_TIMEOUT_MS,
-  SHOPIFY_PULL_WAIT_MS,
   type ShopifySyncOptions,
 } from "@/lib/shopify-refresh";
 import { cacheShopifyProductImages } from "@/lib/shopify-image-cache";
@@ -28,6 +28,8 @@ const FRESH_MS = 5 * 60 * 1000;
 const EVENTS_SYNCED_KEY = "shopify_events_synced_at";
 const FULL_EVENT_PAGES = 20;
 const INCREMENTAL_EVENT_PAGES = 5;
+const LOCATION_PAGES = 10;
+const LEVEL_PAGES = 40;
 
 type FeedResult = {
   feed: ShopifyFeed | null;
@@ -303,8 +305,13 @@ async function shopifyGraphql<T>(
 
 async function loadLocationLevels(location: GraphqlLocation, signal?: AbortSignal): Promise<ShopifyLocationInventory> {
   const items = itemsFromLevels(location.inventoryLevels.nodes);
-  let cursor = location.inventoryLevels.pageInfo.hasNextPage ? location.inventoryLevels.pageInfo.endCursor : null;
-  while (cursor) {
+  const seen = new Set<string>();
+  let cursor = nextPageCursor(
+    location.inventoryLevels.pageInfo.hasNextPage,
+    location.inventoryLevels.pageInfo.endCursor,
+    seen,
+  );
+  for (let pageIndex = 0; cursor && pageIndex < LEVEL_PAGES; pageIndex += 1) {
     const extra = await shopifyGraphql<{ location: GraphqlLocation | null }>(
       LEVELS_QUERY,
       { id: location.id, cursor },
@@ -313,21 +320,23 @@ async function loadLocationLevels(location: GraphqlLocation, signal?: AbortSigna
     const page = extra.location?.inventoryLevels;
     if (!page) break;
     items.push(...itemsFromLevels(page.nodes));
-    cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+    cursor = nextPageCursor(page.pageInfo.hasNextPage, page.pageInfo.endCursor, seen);
   }
   return { locationId: location.id, locationName: location.name, items };
 }
 
 async function fetchLocations(signal?: AbortSignal): Promise<ShopifyLocationInventory[]> {
   const locations: ShopifyLocationInventory[] = [];
+  const seen = new Set<string>();
   let cursor: string | null = null;
-  do {
+  for (let pageIndex = 0; pageIndex < LOCATION_PAGES; pageIndex += 1) {
     const page: {
       locations: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GraphqlLocation[] };
     } = await shopifyGraphql(LOCATION_QUERY, { cursor }, signal);
     locations.push(...(await Promise.all(page.locations.nodes.map((node) => loadLocationLevels(node, signal)))));
-    cursor = page.locations.pageInfo.hasNextPage ? page.locations.pageInfo.endCursor : null;
-  } while (cursor);
+    cursor = nextPageCursor(page.locations.pageInfo.hasNextPage, page.locations.pageInfo.endCursor, seen);
+    if (!cursor) break;
+  }
   return locations;
 }
 
@@ -380,6 +389,7 @@ function explainOrdersError(shopifyText: string, scopes: string[]) {
 async function fetchOrders(sinceMs: number | null, signal?: AbortSignal): Promise<ShopifyOrderLine[]> {
   const lines: ShopifyOrderLine[] = [];
   let cursor: string | null = null;
+  const seen = new Set<string>();
   const maxPages = sinceMs == null ? FULL_EVENT_PAGES : INCREMENTAL_EVENT_PAGES;
   try {
     for (let page = 0; page < maxPages; page += 1) {
@@ -417,7 +427,7 @@ async function fetchOrders(sinceMs: number | null, signal?: AbortSignal): Promis
       if (!data.orders.pageInfo.hasNextPage) break;
       const oldest = data.orders.nodes.at(-1)?.createdAt;
       if (shouldStopEventPages(oldest, sinceMs)) break;
-      cursor = data.orders.pageInfo.endCursor;
+      cursor = nextPageCursor(true, data.orders.pageInfo.endCursor, seen);
       if (!cursor) break;
     }
     return lines;
@@ -430,6 +440,7 @@ async function fetchOrders(sinceMs: number | null, signal?: AbortSignal): Promis
 async function fetchTransfers(sinceMs: number | null, signal?: AbortSignal): Promise<ShopifyTransferLine[]> {
   const lines: ShopifyTransferLine[] = [];
   let cursor: string | null = null;
+  const seen = new Set<string>();
   const maxPages = sinceMs == null ? FULL_EVENT_PAGES : INCREMENTAL_EVENT_PAGES;
   type TransferPage = {
     inventoryTransfers: {
@@ -471,7 +482,7 @@ async function fetchTransfers(sinceMs: number | null, signal?: AbortSignal): Pro
     if (!page.inventoryTransfers.pageInfo.hasNextPage) break;
     const oldest = page.inventoryTransfers.nodes.at(-1)?.dateCreated;
     if (shouldStopEventPages(oldest, sinceMs)) break;
-    cursor = page.inventoryTransfers.pageInfo.endCursor;
+    cursor = nextPageCursor(true, page.inventoryTransfers.pageInfo.endCursor, seen);
     if (!cursor) break;
   }
   return lines;
@@ -538,33 +549,40 @@ async function refreshFeed(key: string): Promise<FeedResult> {
   }
 }
 
+function ensureInflight(state: ShopifyRuntime, key: string) {
+  if (state.inflight && state.inflightKey === key) return state.inflight;
+  const inflight = refreshFeed(key).finally(() => {
+    if (state.inflightKey === key) {
+      state.inflight = undefined;
+      state.inflightKey = undefined;
+    }
+  });
+  state.inflightKey = key;
+  state.inflight = inflight;
+  return inflight;
+}
+
 async function loadFeed(options?: ShopifySyncOptions): Promise<FeedResult> {
   if (!shopifyConfigured()) {
     return emptyFeedResult();
   }
   const key = cacheKey();
   const state = shopifyState();
-  const cache = state.cache;
-  const fresh = Boolean(cache && cache.key === key && Date.now() - cache.at < FRESH_MS);
+  const cache = state.cache?.key === key ? state.cache : undefined;
+  const fresh = Boolean(cache && Date.now() - cache.at < FRESH_MS);
   if (fresh && cache && !options?.wait) {
     return snapshot(cache);
   }
-  if (!state.inflight || state.inflightKey !== key) {
-    state.inflightKey = key;
-    state.inflight = refreshFeed(key).finally(() => {
-      if (state.inflightKey === key) {
-        state.inflight = undefined;
-        state.inflightKey = undefined;
-      }
-    });
-  }
-  if (!options?.wait && cache && cache.key === key) {
-    return snapshot(cache);
+  const inflight = ensureInflight(state, key);
+  // Opening a page serves SQLite (and a finished in-memory copy) immediately.
+  // The pull keeps going in the background. Refresh is the path that waits.
+  if (!options?.wait) {
+    return cache ? snapshot(cache) : emptyFeedResult();
   }
   return waitForShopifyPull(
-    state.inflight,
+    inflight,
     () => lastShopifyCopy(state.cache?.key === key ? state.cache : undefined),
-    options?.wait ? SHOPIFY_PULL_TIMEOUT_MS : SHOPIFY_PULL_WAIT_MS,
+    SHOPIFY_PULL_TIMEOUT_MS,
   );
 }
 
