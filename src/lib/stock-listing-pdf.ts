@@ -7,7 +7,7 @@ import { wrapLines, type StockListing } from "@/lib/stock-listing";
 const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 42;
 const LOGO_SIZE = 72;
-const BRAND_SIZE = 20;
+const BRAND_SIZE = 28;
 const TITLE_SIZE = 16;
 const META_SIZE = 11;
 const HEADER_SIZE = 8;
@@ -117,7 +117,7 @@ export async function buildStockListingPdf(listing: StockListing) {
       y -= LOGO_SIZE + 14;
     } else {
       drawText(page, "Cotton & Clay", tableLeft, y, fonts.bold, BRAND_SIZE);
-      y -= 24;
+      y -= BRAND_SIZE + 10;
     }
     drawText(page, listing.title, tableLeft, y, fonts.bold, TITLE_SIZE);
     y -= 20;
