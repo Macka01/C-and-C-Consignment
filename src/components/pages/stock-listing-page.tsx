@@ -16,34 +16,58 @@ export function StockListingPage() {
   const searchParams = useSearchParams();
   const storeId = searchParams.get("storeId");
   const detail = useResource<StoreDetail>(storeId ? `/api/stores/${storeId}` : null, { shopify: true });
-  const [busy, setBusy] = useState<"email" | null>(null);
+  const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
   const listingHref = storeId ? `/api/print/stock-listing?storeId=${encodeURIComponent(storeId)}` : "";
   const listing = useMemo(() => {
     if (!detail.data) return null;
     return buildStockListing(detail.data.store.name, calendarDateInSydney(), detail.data.stock);
   }, [detail.data]);
 
+  async function listingPdf() {
+    if (!listingHref) throw new Error("Choose a store on Reports first.");
+    const response = await fetch(listingHref);
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(data?.error ?? "The report could not be created.");
+    }
+    const blob = await response.blob();
+    const filename =
+      filenameFromDisposition(response.headers.get("content-disposition")) ?? "consignment-stock-listing.pdf";
+    return new File([blob], filename, { type: "application/pdf" });
+  }
+
   async function emailListing() {
-    if (!listingHref || !listing) return;
+    if (!listing) return;
     setBusy("email");
     try {
-      const response = await fetch(listingHref);
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(data?.error ?? "The report could not be created.");
-      }
-      const blob = await response.blob();
-      const filename =
-        filenameFromDisposition(response.headers.get("content-disposition")) ?? "consignment-stock-listing.pdf";
-      const file = new File([blob], filename, { type: "application/pdf" });
+      const file = await listingPdf();
       const result = await trySharePdf(file, listing.title);
       if (result === "unsupported") {
         downloadPdf(file);
-        toast.message("The PDF was saved on this iPad. Open it, tap Share, then Mail.");
+        const subject = encodeURIComponent(`${listing.title} — ${listing.storeName}`);
+        const body = encodeURIComponent(
+          `The ${listing.title} for ${listing.storeName} (${listing.reportDate}) was saved as ${file.name}. Attach that PDF from Downloads.`,
+        );
+        window.setTimeout(() => {
+          window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        }, 400);
+        toast.message("The PDF was saved to Downloads. Attach it in the Mail message.");
       }
     } catch (error) {
       if (isShareCancel(error)) return;
       toast.error(error instanceof Error ? error.message : "The report could not be emailed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function savePdf() {
+    setBusy("pdf");
+    try {
+      downloadPdf(await listingPdf());
+      toast.success("PDF saved to Downloads.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The PDF could not be saved.");
     } finally {
       setBusy(null);
     }
@@ -59,8 +83,11 @@ export function StockListingPage() {
           <Button className="h-10" disabled={!listing} onClick={() => window.print()}>
             Print
           </Button>
-          <Button className="h-10" variant="outline" disabled={!listing || busy === "email"} onClick={() => void emailListing()}>
+          <Button className="h-10" variant="outline" disabled={!listing || busy !== null} onClick={() => void emailListing()}>
             {busy === "email" ? "Preparing…" : "Email"}
+          </Button>
+          <Button className="h-10" variant="outline" disabled={!listing || busy !== null} onClick={() => void savePdf()}>
+            {busy === "pdf" ? "Saving…" : "Save PDF"}
           </Button>
         </div>
       </div>

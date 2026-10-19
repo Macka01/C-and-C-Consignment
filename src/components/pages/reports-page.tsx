@@ -14,14 +14,14 @@ export function ReportsPage() {
   const stores = useResource<Store[]>("/api/stores");
   const [storeId, setStoreId] = useState("");
   const selected = storeId || (stores.data?.[0] ? String(stores.data[0].id) : "");
-  const listingHref = selected ? `/api/print/stock-listing?storeId=${encodeURIComponent(selected)}` : "";
+  const listingPath = selected ? `/reports/listing?storeId=${encodeURIComponent(selected)}` : "";
 
   return (
     <div className="grid gap-6">
       <PageHeader
         eyebrow="Print and analyse"
         title="Reports"
-        lede="Run a printable listing when you need it. Print or email opens the listing with Print (AirPrint) and Email. Photos and period sheets from the shops stay under Consignee Documents."
+        lede="Run a printable listing when you need it. The listing has Print, Email, and Save PDF — the Mac Mini and iPad cannot print from a raw PDF tab. Photos and period sheets from the shops stay under Consignee Documents."
       />
       {stores.loading && !stores.data ? <LoadingBlock label="Loading stores…" /> : null}
       {stores.error && !stores.data ? <ErrorBlock message={stores.error} onRetry={() => void stores.reload()} /> : null}
@@ -31,8 +31,8 @@ export function ReportsPage() {
             <CardTitle>Consignment Stock Listing</CardTitle>
             <CardDescription>
               Product name, description, consignee product code, product price, and quantity on hand for one store, with
-              total quantity at the bottom. On an iPad, use Print or email — do not rely on the PDF tab. The tracker does
-              not send email itself; Email uses the iPad share sheet or saves the PDF so you can attach it in Mail.
+              total quantity at the bottom. Run report and Print or email both open the listing. Use Print for the printer
+              dialog, Email to send, or Save PDF. The tracker does not send email itself.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -52,19 +52,14 @@ export function ReportsPage() {
               </NativeSelect>
             </Field>
             <div className="flex flex-wrap gap-2">
-              <Button
-                className="h-10"
-                nativeButton={false}
-                disabled={!selected}
-                render={listingHref ? <a href={listingHref} target="_blank" rel="noreferrer" /> : undefined}
-              >
+              <Button className="h-10" disabled={!selected} onClick={() => listingPath && router.push(listingPath)}>
                 Run report
               </Button>
               <Button
                 className="h-10"
                 variant="outline"
                 disabled={!selected}
-                onClick={() => router.push(`/reports/listing?storeId=${encodeURIComponent(selected)}`)}
+                onClick={() => listingPath && router.push(listingPath)}
               >
                 Print or email
               </Button>
