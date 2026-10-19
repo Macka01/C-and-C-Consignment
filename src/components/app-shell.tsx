@@ -54,14 +54,14 @@ function Brand() {
   return (
     <div>
       <p className="font-heading text-2xl leading-none text-foreground">Cotton & Clay</p>
-      <p className="mt-1 text-xs tracking-[0.14em] text-muted-foreground uppercase">Consignment tracker</p>
+      <p className="mt-1 text-[0.7rem] tracking-[0.18em] text-muted-foreground uppercase">Consignment tracker</p>
     </div>
   );
 }
 
 function SharedNote() {
   return (
-    <p className="text-sm leading-6 text-muted-foreground">
+    <p className="text-xs leading-5 text-muted-foreground">
       One shared tracker. Phones and shop computers see the same stock.
     </p>
   );
