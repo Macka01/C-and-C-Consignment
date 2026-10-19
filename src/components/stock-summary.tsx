@@ -1,9 +1,7 @@
-import { otherFromOnHand } from "@/lib/stock-totals";
+import { otherFromOnHand, stockOnHand } from "@/lib/stock-totals";
 import type { StockLine } from "@/lib/types";
 
-export function stockOnHand(line: StockLine) {
-  return line.shopifyQtyOnHand ?? line.quantity;
-}
+export { stockOnHand };
 
 export function stockOther(line: StockLine) {
   return otherFromOnHand(stockOnHand(line), {

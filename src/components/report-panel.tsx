@@ -62,7 +62,7 @@ export function ReportPanel({
     body.set("file", file);
     try {
       await api("/api/reports", { method: "POST", body });
-      toast.success("Report saved on the server");
+      toast.success("Document saved on the server");
       setFile(null);
       setNotes("");
       if (cameraRef.current) cameraRef.current.value = "";
@@ -87,7 +87,7 @@ export function ReportPanel({
     body.set("file", next);
     try {
       await api("/api/reports", { method: "POST", body });
-      toast.success("Report file replaced");
+      toast.success("Document replaced");
       onChanged();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "The file could not be replaced.");
@@ -102,7 +102,7 @@ export function ReportPanel({
       <Card>
         <CardContent className="grid gap-4">
           <div>
-            <p className="font-medium">Save a consignee report</p>
+            <p className="font-medium">Save a consignee document</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Take a photo on this phone or upload a picture or PDF. The file stays on the server, so every device can open it later. You can add another file for the same month or replace one.
             </p>
@@ -154,7 +154,7 @@ export function ReportPanel({
             </p>
             <FormError message={error} />
             <Button type="submit" className="h-11 sm:w-fit" disabled={pending || stores.length === 0}>
-              {pending ? "Saving…" : "Save report"}
+              {pending ? "Saving…" : "Save document"}
             </Button>
           </form>
         </CardContent>
@@ -170,7 +170,7 @@ export function ReportPanel({
 
       {reports.length === 0 ? (
         <EmptyBlock
-          title="No reports saved"
+          title="No consignee documents saved"
           body="A photo of the shop’s monthly sheet, or their PDF, will sit here against the store and period."
         />
       ) : (
@@ -233,13 +233,13 @@ export function ReportPanel({
         onOpenChange={(open) => {
           if (!open) setRemoving(null);
         }}
-        title="Delete this report?"
+        title="Delete this document?"
         body="The file is removed from the server. You can upload it again later."
-        confirmLabel="Delete report"
+        confirmLabel="Delete document"
         onConfirm={async () => {
           if (!removing) return;
           await api(`/api/reports/${removing.id}`, { method: "DELETE" });
-          toast.success("Report deleted");
+          toast.success("Document deleted");
           onChanged();
         }}
       />

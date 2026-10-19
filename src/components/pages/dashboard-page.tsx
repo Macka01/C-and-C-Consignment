@@ -17,7 +17,7 @@ export function DashboardPage() {
       <PageHeader
         eyebrow="Studio desk"
         title="What’s out on consignment"
-        lede="Cotton & Clay stock at consignee locations, with sales and transfers from Shopify. Invoices and shop reports stay here."
+        lede="Cotton & Clay stock at consignee locations, with sales and transfers from Shopify. Invoices, printable reports, and consignee documents stay here."
         action={<RefreshButton onClick={() => void dashboard.reload({ fresh: true })} />}
       />
 

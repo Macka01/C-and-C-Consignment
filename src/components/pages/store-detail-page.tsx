@@ -85,14 +85,14 @@ export function StoreDetailPage() {
                 Invoices
               </TabsTrigger>
               <TabsTrigger value="reports" className="h-9 px-3">
-                Reports
+                Consignee Documents
               </TabsTrigger>
             </TabsList>
             <TabsContent value="stock" className="mt-4 grid gap-4">
               <div className="grid gap-2">
                 <p className="max-w-xl text-sm text-muted-foreground">
                   Products at this location. Open a product for transferred in, transferred out, sales, other, on hand,
-                  and the transaction history. Invoices and report files are still entered here.
+                  and the transaction history. Invoices and consignee documents are still entered here.
                 </p>
                 <ShopifyStockNote shopify={detail.data.shopify} />
               </div>
@@ -157,7 +157,7 @@ export function StoreDetailPage() {
             open={removing}
             onOpenChange={setRemoving}
             title={`Delete ${store.name}?`}
-            body="Stock, transfers, sales, invoices, and saved reports for this store are removed from the shared tracker."
+            body="Stock, transfers, sales, invoices, and saved consignee documents for this store are removed from the shared tracker."
             confirmLabel="Delete store"
             onConfirm={async () => {
               await api(`/api/stores/${store.id}`, { method: "DELETE" });

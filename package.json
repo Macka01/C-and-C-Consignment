@@ -11,7 +11,7 @@
     "server:update": "bash server/macos/update.sh",
     "server:uninstall": "bash server/macos/uninstall.sh",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/shopify-match.test.ts src/lib/shopify-feed.test.ts src/lib/stock-totals.test.ts src/lib/stock-search.test.ts src/lib/shopify-refresh.test.ts src/lib/shopify-product-image.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/shopify-match.test.ts src/lib/shopify-feed.test.ts src/lib/stock-totals.test.ts src/lib/stock-search.test.ts src/lib/shopify-refresh.test.ts src/lib/shopify-product-image.test.ts src/lib/stock-listing.test.ts"
   },
   "engines": {
     "node": ">=20.9.0"
@@ -24,6 +24,7 @@
     "lucide-react": "^1.55.0",
     "next": "16.4.0",
     "next-themes": "^0.4.6",
+    "pdf-lib": "^1.17.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "shadcn": "^4.21.4",

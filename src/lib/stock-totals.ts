@@ -25,6 +25,11 @@ export function otherFromOnHand(onHand: number, totals: MovementTotals) {
   return onHand - onHandFromTotals(totals);
 }
 
+/** Boxed on-hand: Shopify when we have it, otherwise the tracker quantity. */
+export function stockOnHand(line: Pick<StockLine, "shopifyQtyOnHand" | "quantity">) {
+  return line.shopifyQtyOnHand ?? line.quantity;
+}
+
 export function attachStockTotals(stock: StockLine[], movements: Movement[]): StockLine[] {
   const map = new Map<string, MovementTotals>();
   for (const movement of movements) {

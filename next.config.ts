@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   // Dev assets are tied to localhost. Phones and 127.0.0.1 need an explicit allow.
   allowedDevOrigins: devOrigins(),
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: ["better-sqlite3", "pdf-lib"],
   outputFileTracingIncludes: {
     "/*": ["./node_modules/better-sqlite3/**/*", "./scripts/backup-data.mjs"],
   },
