@@ -5,7 +5,7 @@ import os from "node:os";
 import { getDb, dataDir, reportsDir, usesExternalDataDir } from "@/lib/db";
 import { publicProductImageUrl } from "@/lib/shopify-product-image";
 import { HttpError } from "@/lib/errors";
-import { stripShopifyDefaultTitle } from "@/lib/shopify-match";
+import { keepConsigneeCode, stripShopifyDefaultTitle } from "@/lib/shopify-match";
 import { attachStockTotals } from "@/lib/stock-totals";
 import type {
   Dashboard,
@@ -319,21 +319,63 @@ export function deleteStore(id: number) {
 
 let defaultTitlesScrubbed = false;
 
+function mergeDuplicateProduct(db: ReturnType<typeof getDb>, keepId: number, donorId: number) {
+  if (keepId === donorId) return;
+  const donorStock = db
+    .prepare(`SELECT id, store_id, consignee_code, quantity FROM store_stock WHERE product_id = ?`)
+    .all(donorId) as { id: number; store_id: number; consignee_code: string; quantity: number }[];
+  const findKeep = db.prepare(`SELECT id, consignee_code FROM store_stock WHERE store_id = ? AND product_id = ?`);
+  const updateKeep = db.prepare(`UPDATE store_stock SET consignee_code = ? WHERE id = ?`);
+  const moveStock = db.prepare(`UPDATE store_stock SET product_id = ? WHERE id = ?`);
+  const dropStock = db.prepare(`DELETE FROM store_stock WHERE id = ?`);
+  for (const row of donorStock) {
+    const keep = findKeep.get(row.store_id, keepId) as { id: number; consignee_code: string } | undefined;
+    if (keep) {
+      const code = keepConsigneeCode(keep.consignee_code, row.consignee_code);
+      if (code !== keep.consignee_code) updateKeep.run(code, keep.id);
+      dropStock.run(row.id);
+    } else {
+      moveStock.run(keepId, row.id);
+    }
+  }
+  db.prepare(`UPDATE movements SET product_id = ? WHERE product_id = ?`).run(keepId, donorId);
+  const donorImage = getProductImageRecord(donorId);
+  const keepImage = getProductImageRecord(keepId);
+  if (donorImage?.imageName && donorImage.imageName !== keepImage?.imageName) {
+    fs.rmSync(productImagePath(donorImage.imageName), { force: true });
+  }
+  db.prepare(`DELETE FROM products WHERE id = ?`).run(donorId);
+}
+
 export function scrubShopifyDefaultTitleNames() {
   if (defaultTitlesScrubbed) return;
   defaultTitlesScrubbed = true;
   const db = getDb();
-  const rows = db.prepare(`SELECT id, name FROM products WHERE name LIKE '%Default Title%'`).all() as {
-    id: number;
-    name: string;
-  }[];
-  if (!rows.length) return;
-  const now = new Date().toISOString();
-  const update = db.prepare(`UPDATE products SET name = ?, updated_at = ? WHERE id = ?`);
   const write = db.transaction(() => {
-    for (const row of rows) {
+    const named = db.prepare(`SELECT id, name FROM products`).all() as { id: number; name: string }[];
+    const now = new Date().toISOString();
+    const rename = db.prepare(`UPDATE products SET name = ?, updated_at = ? WHERE id = ?`);
+    for (const row of named) {
       const cleaned = stripShopifyDefaultTitle(row.name);
-      if (cleaned && cleaned !== row.name) update.run(cleaned, now, row.id);
+      if (cleaned && cleaned !== row.name) {
+        rename.run(cleaned, now, row.id);
+        row.name = cleaned;
+      }
+    }
+    const groups = new Map<string, number[]>();
+    for (const row of named) {
+      const key = stripShopifyDefaultTitle(row.name).toLowerCase();
+      if (!key) continue;
+      const list = groups.get(key) ?? [];
+      list.push(row.id);
+      groups.set(key, list);
+    }
+    for (const ids of groups.values()) {
+      if (ids.length < 2) continue;
+      const keepId = Math.min(...ids);
+      for (const donorId of ids) {
+        if (donorId !== keepId) mergeDuplicateProduct(db, keepId, donorId);
+      }
     }
   });
   write();
@@ -579,16 +621,18 @@ export function findProductIdForShopify(ref: {
       | undefined;
     if (byVariant) return byVariant.id;
   }
-  if (ref.sku) {
+  if (ref.sku && !/^default title$/i.test(ref.sku.trim())) {
     const bySku = db
       .prepare(`SELECT product_id AS id FROM store_stock WHERE consignee_code = ? COLLATE NOCASE LIMIT 1`)
       .get(ref.sku) as { id: number } | undefined;
     if (bySku) return bySku.id;
   }
-  const byName = db.prepare(`SELECT id FROM products WHERE name = ? COLLATE NOCASE`).get(ref.name) as
-    | { id: number }
-    | undefined;
-  return byName?.id ?? null;
+  const wanted = stripShopifyDefaultTitle(ref.name).toLowerCase();
+  if (!wanted) return null;
+  const named = db.prepare(`SELECT id, name FROM products`).all() as { id: number; name: string }[];
+  const matches = named.filter((row) => stripShopifyDefaultTitle(row.name).toLowerCase() === wanted);
+  if (!matches.length) return null;
+  return matches.sort((left, right) => left.id - right.id)[0]?.id ?? null;
 }
 
 export function ensureShopifyProduct(ref: {
@@ -692,13 +736,12 @@ export function ensureShopifyStock(storeId: number, productId: number, consignee
   const db = getDb();
   const qty = Math.max(0, Math.round(quantity));
   const existing = db
-    .prepare(`SELECT id FROM store_stock WHERE store_id = ? AND product_id = ?`)
-    .get(storeId, productId) as { id: number } | undefined;
+    .prepare(`SELECT id, consignee_code FROM store_stock WHERE store_id = ? AND product_id = ?`)
+    .get(storeId, productId) as { id: number; consignee_code: string } | undefined;
   if (existing) {
-    db.prepare(`UPDATE store_stock SET quantity = ?, consignee_code = CASE WHEN ? = '' THEN consignee_code ELSE ? END WHERE id = ?`).run(
+    db.prepare(`UPDATE store_stock SET quantity = ?, consignee_code = ? WHERE id = ?`).run(
       qty,
-      consigneeCode,
-      consigneeCode,
+      keepConsigneeCode(existing.consignee_code, consigneeCode),
       existing.id,
     );
     return;
@@ -706,7 +749,7 @@ export function ensureShopifyStock(storeId: number, productId: number, consignee
   db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (?, ?, ?, ?)`).run(
     storeId,
     productId,
-    consigneeCode,
+    keepConsigneeCode("", consigneeCode),
     qty,
   );
 }

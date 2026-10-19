@@ -37,6 +37,18 @@ export function stripShopifyDefaultTitle(value: string) {
     .trim();
 }
 
+export function isPlaceholderShopifyCode(value: string | null | undefined) {
+  const text = value?.trim() ?? "";
+  return !text || text === "—" || /^default title$/i.test(text);
+}
+
+/** Keep a code Steve saved. Only fill from Shopify when the shelf code is still blank. */
+export function keepConsigneeCode(existing: string | null | undefined, incoming: string | null | undefined) {
+  if (!isPlaceholderShopifyCode(existing)) return existing!.trim();
+  if (!isPlaceholderShopifyCode(incoming)) return incoming!.trim();
+  return "";
+}
+
 export function shopifyProductName(input: {
   title?: string | null;
   variantTitle?: string | null;

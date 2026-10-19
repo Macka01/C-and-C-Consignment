@@ -74,7 +74,11 @@ export function ProductDetailPage() {
                     </div>
                     <StockMovementSummary line={line} />
                     <ShopifyMatchNote line={line} />
-                    <ConsigneeCodeField line={line} onChanged={() => void detail.reload()} />
+                    <ConsigneeCodeField
+                      key={`${line.id}:${line.consigneeCode}`}
+                      line={line}
+                      onChanged={() => void detail.reload()}
+                    />
                   </li>
                 ))}
               </ul>

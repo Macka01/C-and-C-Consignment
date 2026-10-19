@@ -6,6 +6,7 @@ import {
   matchShopifyLocation,
   normalizeShopifyName,
   productRefFromItem,
+  keepConsigneeCode,
   shopifyProductName,
   stripShopifyDefaultTitle,
   shelfBelongsAtStore,
@@ -79,6 +80,14 @@ describe("shopify inventory match", () => {
       }).name,
       "Handmade Ceramic Trinket Dish",
     );
+  });
+
+  it("keeps a saved consignee code instead of Shopify Default Title or SKU", () => {
+    assert.equal(keepConsigneeCode("CS-01", "CHEESE-STICKS"), "CS-01");
+    assert.equal(keepConsigneeCode("", "CHEESE-STICKS"), "CHEESE-STICKS");
+    assert.equal(keepConsigneeCode("Default Title", "CS-01"), "CS-01");
+    assert.equal(keepConsigneeCode("Default Title", ""), "");
+    assert.equal(keepConsigneeCode("—", "CS-01"), "CS-01");
   });
 
   it("matches a store to a Shopify location by name", () => {
