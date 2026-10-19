@@ -680,6 +680,17 @@ export function ensureShopifyProduct(ref: {
   return { id: created.id, created: true };
 }
 
+export function listShopifyProductsMissingImages(): { id: number; variantId: string }[] {
+  return getDb()
+    .prepare(
+      `SELECT id, shopify_variant_id AS variantId
+       FROM products
+       WHERE shopify_variant_id IS NOT NULL AND shopify_variant_id != ''
+         AND (image_name IS NULL OR image_name = '')`,
+    )
+    .all() as { id: number; variantId: string }[];
+}
+
 export function getProductImageRecord(id: number): {
   shopifyUrl: string | null;
   imageName: string | null;

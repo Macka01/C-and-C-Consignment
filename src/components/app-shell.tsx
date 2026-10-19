@@ -50,11 +50,27 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+function BrandMark({ className }: { className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/cotton-and-clay-logo.png"
+      alt=""
+      width={56}
+      height={56}
+      className={cn("shrink-0 rounded-full bg-white object-cover ring-1 ring-foreground/15", className)}
+    />
+  );
+}
+
 function Brand() {
   return (
-    <div>
-      <p className="font-heading text-2xl leading-none text-foreground">Cotton & Clay</p>
-      <p className="mt-1 text-[0.7rem] tracking-[0.18em] text-muted-foreground uppercase">Consignment tracker</p>
+    <div className="flex items-center gap-3">
+      <BrandMark className="size-14" />
+      <div className="min-w-0">
+        <p className="font-heading text-2xl leading-none text-foreground">Cotton & Clay</p>
+        <p className="mt-1 text-[0.7rem] tracking-[0.14em] text-muted-foreground uppercase">Consignment tracker</p>
+      </div>
     </div>
   );
 }
@@ -88,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ShopifyStatusProvider>
       <div className="min-h-screen min-w-0 overflow-x-clip">
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-sidebar px-4 py-6 md:flex print:hidden">
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-border bg-sidebar px-4 py-6 md:flex print:hidden">
           <Brand />
           <div className="mt-8">
             <NavLinks />
@@ -98,11 +114,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        <div className="min-w-0 md:pl-64 print:pl-0">
+        <div className="min-w-0 md:pl-72 print:pl-0">
           <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/80 bg-background/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur md:hidden print:hidden">
             <Button variant="outline" size="icon" className="size-10" onClick={() => setOpen(true)} aria-label="Open menu">
               <Menu />
             </Button>
+            <BrandMark className="size-10" />
             <div className="min-w-0">
               <p className="font-heading text-xl leading-none">Cotton & Clay</p>
               <p className="truncate text-sm text-muted-foreground">{current?.label ?? "Consignment tracker"}</p>

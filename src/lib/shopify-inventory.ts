@@ -19,6 +19,7 @@ import {
   SHOPIFY_PULL_TIMEOUT_MS,
   type ShopifySyncOptions,
 } from "@/lib/shopify-refresh";
+import { listShopifyProductsMissingImages } from "@/lib/data";
 import { cacheShopifyProductImages } from "@/lib/shopify-image-cache";
 import { applyShopifyFeed, type ShopifyFeed } from "@/lib/shopify-sync";
 import type { ShopifyOrderLine, ShopifyTransferLine } from "@/lib/shopify-match";
@@ -232,8 +233,40 @@ function money(value: string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function shopifyImageUrl(variant: GraphqlVariant | undefined) {
+function shopifyImageUrl(variant: { image?: GraphqlImage; product?: { featuredImage?: GraphqlImage } | null } | undefined) {
   return variant?.image?.url?.trim() || variant?.product?.featuredImage?.url?.trim() || null;
+}
+
+const VARIANT_IMAGES_QUERY = `
+  query VariantImages($ids: [ID!]!) {
+    nodes(ids: $ids) {
+      id
+      ... on ProductVariant {
+        image { url }
+        product { featuredImage { url } }
+      }
+    }
+  }
+`;
+
+/** Photos for catalog rows the inventory feed did not mention, including shelves now at zero. */
+async function fetchMissingVariantImages(productIdsAlreadyQueued: Set<number>) {
+  const missing = listShopifyProductsMissingImages().filter((row) => !productIdsAlreadyQueued.has(row.id));
+  const jobs: Array<{ productId: number; url: string }> = [];
+  for (let index = 0; index < missing.length; index += 100) {
+    const batch = missing.slice(index, index + 100);
+    const data = await shopifyGraphql<{
+      nodes: Array<{ id?: string | null; image?: GraphqlImage; product?: { featuredImage?: GraphqlImage } | null } | null>;
+    }>(VARIANT_IMAGES_QUERY, { ids: batch.map((row) => row.variantId) });
+    const byVariant = new Map(batch.map((row) => [row.variantId, row.id]));
+    for (const node of data.nodes ?? []) {
+      if (!node?.id) continue;
+      const productId = byVariant.get(node.id);
+      const url = shopifyImageUrl(node);
+      if (productId && url) jobs.push({ productId, url });
+    }
+  }
+  return jobs;
 }
 
 function refFromVariant(variant: GraphqlVariant | undefined, sku: string | null) {
@@ -542,8 +575,17 @@ async function refreshFeed(key: string): Promise<FeedResult> {
     const { feed, warning } = await fetchShopifyFeed();
     if (feed) {
       const applied = applyShopifyFeed(feed);
-      await cacheShopifyProductImages(applied.images);
       state.savedCopy = true;
+      let images = applied.images;
+      if (!mockPath()) {
+        try {
+          const extra = await fetchMissingVariantImages(new Set(images.map((job) => job.productId)));
+          images = [...images, ...extra];
+        } catch {
+          // Stock is already saved. The next pull tries the missing photos again.
+        }
+      }
+      await cacheShopifyProductImages(images);
     }
     const result: FeedResult = { feed, error: null, warning };
     state.cache = { key, at: Date.now(), ...result };

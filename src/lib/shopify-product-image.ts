@@ -42,6 +42,22 @@ export function publicProductImageUrl(productId: number, storedName: string) {
   return `/api/products/${productId}/image?v=${encodeURIComponent(storedName)}`;
 }
 
+/** A listing thumbnail. Shopify’s CDN serves this size from the original photo URL. */
+export function shopifySizedImageUrl(url: string, width = 480) {
+  const remote = url.trim();
+  if (!remote) return "";
+  let parsed: URL;
+  try {
+    parsed = new URL(remote);
+  } catch {
+    return "";
+  }
+  if (!/^https?:$/i.test(parsed.protocol)) return "";
+  if (parsed.searchParams.has("width")) return parsed.toString();
+  parsed.searchParams.set("width", String(width));
+  return parsed.toString();
+}
+
 export async function downloadShopifyImage(
   url: string,
 ): Promise<{ bytes: Buffer; mime: string; ext: string } | null> {

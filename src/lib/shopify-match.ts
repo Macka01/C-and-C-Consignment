@@ -75,6 +75,23 @@ export function shopifyCatalogName(name: string | null | undefined, sku?: string
   return "";
 }
 
+/** Photos for catalog rows the stock pass does not create, including shelves now at zero. */
+export function catalogImageJobs(
+  locations: ShopifyLocationInventory[],
+  findProductId: (ref: ShopifyProductRef) => number | null,
+) {
+  const jobs: Array<{ productId: number; url: string }> = [];
+  for (const location of locations) {
+    for (const item of location.items) {
+      const ref = productRefFromItem(item);
+      if (!ref.name || !ref.imageUrl) continue;
+      const existing = findProductId(ref);
+      if (existing) jobs.push({ productId: existing, url: ref.imageUrl });
+    }
+  }
+  return jobs;
+}
+
 export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRef {
   return {
     variantId: item.variantId,

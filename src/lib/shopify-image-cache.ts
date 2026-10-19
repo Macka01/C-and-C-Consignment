@@ -3,6 +3,7 @@ import { getProductImageRecord, productImagePath, saveProductImage } from "@/lib
 import {
   downloadShopifyImage,
   localProductImageName,
+  shopifySizedImageUrl,
   shouldFetchProductImage,
 } from "@/lib/shopify-product-image";
 
@@ -25,7 +26,10 @@ async function cacheOneImage(job: ProductImageJob) {
   if (!stored) return;
   const exists = Boolean(stored.imageName && fs.existsSync(productImagePath(stored.imageName)));
   if (!shouldFetchProductImage(stored.shopifyUrl, stored.imageName, exists, job.url)) return;
-  const downloaded = await downloadShopifyImage(job.url);
+  const original = job.url.trim();
+  const sized = shopifySizedImageUrl(original);
+  let downloaded = sized && sized !== original ? await downloadShopifyImage(sized) : null;
+  if (!downloaded) downloaded = await downloadShopifyImage(original);
   if (!downloaded) return;
   const storedName = localProductImageName(job.productId, job.url, downloaded.ext);
   fs.writeFileSync(productImagePath(storedName), downloaded.bytes);

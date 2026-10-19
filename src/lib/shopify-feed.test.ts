@@ -1,6 +1,47 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { locationNameFromOrder, movementsFromTransfers, salesFromOrders } from "./shopify-match.ts";
+import { catalogImageJobs, locationNameFromOrder, movementsFromTransfers, salesFromOrders } from "./shopify-match.ts";
+
+describe("catalog photos", () => {
+  it("keeps a photo for a product that is already in the catalog at zero on hand", () => {
+    const jobs = catalogImageJobs(
+      [
+        {
+          locationId: "gid://shopify/Location/1",
+          locationName: "Harbour Linen",
+          items: [
+            {
+              variantId: "gid://shopify/ProductVariant/1",
+              sku: null,
+              title: "Flax Amity Ceramic Cup - Duck Egg",
+              variantTitle: null,
+              displayName: "Flax Amity Ceramic Cup - Duck Egg",
+              productType: "Tableware - Flax",
+              description: "A flax cup.",
+              price: 19.5,
+              onHand: 0,
+              imageUrl: "https://cdn.shopify.com/cup.jpg",
+            },
+            {
+              variantId: "gid://shopify/ProductVariant/2",
+              sku: null,
+              title: "Flax Amity Vase - Snow White",
+              variantTitle: null,
+              displayName: "Flax Amity Vase - Snow White",
+              productType: "Tableware - Flax",
+              description: "A flax vase.",
+              price: 35,
+              onHand: 0,
+              imageUrl: "https://cdn.shopify.com/vase.jpg",
+            },
+          ],
+        },
+      ],
+      (ref) => (ref.variantId === "gid://shopify/ProductVariant/1" ? 9 : null),
+    );
+    assert.deepEqual(jobs, [{ productId: 9, url: "https://cdn.shopify.com/cup.jpg" }]);
+  });
+});
 
 describe("shopify feed mapping", () => {
   it("turns located orders into sales and skips cancelled lines", () => {

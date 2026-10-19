@@ -13,6 +13,7 @@ import {
 } from "@/lib/data";
 import {
   matchShopifyLocation,
+  catalogImageJobs,
   movementsFromTransfers,
   onHandCount,
   productRefFromItem,
@@ -118,6 +119,12 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     const location = matchShopifyLocation(store.name, feed.locations);
     if (!location) continue;
     dropShelvesShopifyDoesNotStock(store.id, location);
+  }
+
+  // A product can sit in the catalog at zero on-hand. Those rows were skipped above, so their
+  // Shopify photo was never saved. Attach a photo for any catalog product the feed still names.
+  for (const job of catalogImageJobs(feed.locations, findProductIdForShopify)) {
+    rememberImage(job.productId, job.url);
   }
 
   return { createdProducts, movements, storesMatched, images };

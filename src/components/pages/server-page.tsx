@@ -2,6 +2,7 @@
 
 import { cn } from "cn";
 import { ErrorBlock, LoadingBlock, PageHeader } from "@/components/feedback";
+import { serverAddressSections, type ServerAddress } from "@/lib/server-addresses";
 import { useResource } from "@/lib/use-resource";
 import type { NetworkInfo } from "@/lib/types";
 
@@ -46,9 +47,29 @@ function ServerConnection({ connected, failed }: { connected: boolean; failed: b
   );
 }
 
+function AddressList({ addresses, empty }: { addresses: ServerAddress[]; empty: string }) {
+  if (addresses.length === 0) {
+    return <p className="mt-3 text-base leading-7 text-muted-foreground">{empty}</p>;
+  }
+  return (
+    <ul className="mt-4 grid gap-4">
+      {addresses.map((address) => (
+        <li key={address.href} className="grid gap-0.5">
+          <p className="text-sm font-medium text-foreground">{address.label}</p>
+          <a className="break-all text-base font-medium text-primary underline-offset-2 hover:underline" href={address.href}>
+            {address.href}
+          </a>
+          <p className="text-sm leading-6 text-muted-foreground">{address.detail}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function ServerPage() {
   const network = useResource<NetworkInfo>("/api/network");
   const onMac = network.data?.externalData === true;
+  const sections = network.data ? serverAddressSections(network.data.urls, network.data.port) : [];
 
   return (
     <div className="grid gap-6">
@@ -80,30 +101,31 @@ export function ServerPage() {
           )}{" "}
           The device you are using to view this page does not keep its own copy.
         </p>
-        <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">
-          On iPhone or iPad: Safari → Share → Add to Home Screen, using one of the addresses below.
-        </p>
-        {network.data ? (
-          <div className="mt-4">
-            <p className="text-base">Open the app from another device:</p>
-            {network.data.urls.length > 0 ? (
-              <ul className="mt-2 grid gap-1">
-                {network.data.urls.map((href) => (
-                  <li key={href}>
-                    <a className="block break-all text-base font-medium text-primary underline-offset-2 hover:underline" href={href}>
-                      {href}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-base leading-7 text-muted-foreground">
-                No network address was found. From another device, open http://&lt;the Mac’s address&gt;:{network.data.port} while the app is running.
-              </p>
-            )}
-          </div>
-        ) : null}
       </section>
+
+      {network.data ? (
+        <div className="grid gap-4">
+          <p className="max-w-3xl text-base leading-7 text-muted-foreground">
+            On iPhone or iPad: open the address for where that device is, then Safari → Share → Add to Home Screen.
+          </p>
+          {sections.map((section) => (
+            <section key={section.id} className="rounded-xl border border-primary/20 bg-card px-4 py-4 ring-1 ring-foreground/5">
+              <h2 className="font-heading text-xl text-foreground">{section.title}</h2>
+              <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">{section.explanation}</p>
+              <AddressList
+                addresses={section.addresses}
+                empty={
+                  section.id === "wifi"
+                    ? "No local address was found."
+                    : section.id === "remote"
+                      ? "No Tailscale or other non-local address was found."
+                      : "None found on this Mac."
+                }
+              />
+            </section>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
