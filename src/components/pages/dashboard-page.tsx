@@ -18,7 +18,7 @@ export function DashboardPage() {
         eyebrow="Studio desk"
         title="What’s out on consignment"
         lede="Cotton & Clay stock at consignee locations, with sales and transfers from Shopify. Invoices and shop reports stay here."
-        action={<RefreshButton onClick={() => void dashboard.reload()} />}
+        action={<RefreshButton onClick={() => void dashboard.reload({ fresh: true })} />}
       />
 
       {dashboard.loading && !dashboard.data ? <LoadingBlock label="Retrieving Shopify data…" /> : null}

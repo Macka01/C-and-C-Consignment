@@ -1,12 +1,12 @@
 import { createProduct, listProducts } from "@/lib/data";
 import { fail, json, live, readJson } from "@/lib/handlers";
 import { parseProduct } from "@/lib/parse";
-import { syncFromShopify } from "@/lib/shopify-inventory";
+import { shopifySyncOptions, syncFromShopify } from "@/lib/shopify-inventory";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await live();
-    await syncFromShopify();
+    await syncFromShopify(shopifySyncOptions(request));
     return json(listProducts());
   } catch (error) {
     return fail(error);

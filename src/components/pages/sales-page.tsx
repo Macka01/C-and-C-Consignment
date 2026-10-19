@@ -47,7 +47,7 @@ export function SalesPage() {
         eyebrow="From the shops"
         title="Sales history"
         lede="Sales come from Shopify. Filter by store and dates. The totals, the chart, and the list all use that same selection."
-        action={<RefreshButton onClick={() => void sales.reload()} />}
+        action={<RefreshButton onClick={() => void sales.reload({ fresh: true })} />}
       />
       <Card>
         <CardContent className="grid gap-4">

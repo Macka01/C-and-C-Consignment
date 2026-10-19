@@ -15,6 +15,10 @@ type ResourceOptions = {
   shopify?: boolean;
 };
 
+function withRefreshParam(url: string) {
+  return `${url}${url.includes("?") ? "&" : "?"}refresh=1`;
+}
+
 export function useResource<T>(url: string | null, refreshOrOptions?: number | ResourceOptions) {
   const refreshMs = typeof refreshOrOptions === "number" ? refreshOrOptions : refreshOrOptions?.refreshMs;
   const shopify = typeof refreshOrOptions === "object" ? Boolean(refreshOrOptions?.shopify) : false;
@@ -25,12 +29,13 @@ export function useResource<T>(url: string | null, refreshOrOptions?: number | R
     error: null,
   });
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (opts?: { fresh?: boolean }) => {
     if (!url) return;
     const id = requestId.current;
     const requested = url;
+    const fetchUrl = opts?.fresh ? withRefreshParam(url) : url;
     try {
-      const next = await api<T>(requested);
+      const next = await api<T>(fetchUrl);
       if (requestId.current !== id) return;
       setState({ url: requested, data: next, error: null });
     } catch (err) {

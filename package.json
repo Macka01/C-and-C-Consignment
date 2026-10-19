@@ -11,7 +11,7 @@
     "server:update": "bash server/macos/update.sh",
     "server:uninstall": "bash server/macos/uninstall.sh",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/shopify-match.test.ts src/lib/shopify-feed.test.ts src/lib/stock-totals.test.ts src/lib/stock-search.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/shopify-match.test.ts src/lib/shopify-feed.test.ts src/lib/stock-totals.test.ts src/lib/stock-search.test.ts src/lib/shopify-refresh.test.ts"
   },
   "engines": {
     "node": ">=20.9.0"

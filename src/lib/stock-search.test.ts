@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { matchesStockSearch } from "./stock-search.ts";
+import { matchesProductSearch, matchesStockSearch } from "./stock-search.ts";
 
 const bowl = {
   productName: "Dessert bowl",
@@ -24,5 +24,21 @@ describe("store stock search", () => {
 
   it("hides products that do not match", () => {
     assert.equal(matchesStockSearch(bowl, "pitcher"), false);
+  });
+});
+
+describe("catalog product search", () => {
+  const mug = {
+    name: "Flax Mug — Khaki",
+    productGroup: "Flax ceramics",
+    description: "Everyday mug",
+  };
+
+  it("matches name, group, or description", () => {
+    assert.equal(matchesProductSearch(mug, ""), true);
+    assert.equal(matchesProductSearch(mug, "khaki"), true);
+    assert.equal(matchesProductSearch(mug, "ceramics"), true);
+    assert.equal(matchesProductSearch(mug, "everyday"), true);
+    assert.equal(matchesProductSearch(mug, "bowl"), false);
   });
 });
