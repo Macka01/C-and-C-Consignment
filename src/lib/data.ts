@@ -5,6 +5,7 @@ import os from "node:os";
 import { getDb, dataDir, reportsDir, usesExternalDataDir } from "@/lib/db";
 import { publicProductImageUrl } from "@/lib/shopify-product-image";
 import { HttpError } from "@/lib/errors";
+import { stripShopifyDefaultTitle } from "@/lib/shopify-match";
 import { attachStockTotals } from "@/lib/stock-totals";
 import type {
   Dashboard,
@@ -120,7 +121,7 @@ function mapProduct(row: ProductRow): Product {
   return {
     id: row.id,
     productGroup: row.product_group,
-    name: row.name,
+    name: stripShopifyDefaultTitle(row.name) || row.name,
     description: row.description,
     retailPrice: row.retail_price,
     units: row.units ?? 0,
@@ -136,7 +137,7 @@ function mapStock(row: StockRow): StockLine {
     productId: row.product_id,
     consigneeCode: row.consignee_code,
     quantity: row.quantity,
-    productName: row.product_name,
+    productName: stripShopifyDefaultTitle(row.product_name) || row.product_name,
     productGroup: row.product_group,
     description: row.description,
     retailPrice: row.retail_price,
@@ -158,7 +159,7 @@ function mapMovement(row: MovementRow): Movement {
     storeId: row.store_id,
     storeName: row.store_name,
     productId: row.product_id,
-    productName: row.product_name,
+    productName: stripShopifyDefaultTitle(row.product_name) || row.product_name,
     productGroup: row.product_group,
     type: row.type,
     quantity: row.quantity,
@@ -316,7 +317,30 @@ export function deleteStore(id: number) {
   for (const file of files) unlinkStored(file.stored_name);
 }
 
+let defaultTitlesScrubbed = false;
+
+export function scrubShopifyDefaultTitleNames() {
+  if (defaultTitlesScrubbed) return;
+  defaultTitlesScrubbed = true;
+  const db = getDb();
+  const rows = db.prepare(`SELECT id, name FROM products WHERE name LIKE '%Default Title%'`).all() as {
+    id: number;
+    name: string;
+  }[];
+  if (!rows.length) return;
+  const now = new Date().toISOString();
+  const update = db.prepare(`UPDATE products SET name = ?, updated_at = ? WHERE id = ?`);
+  const write = db.transaction(() => {
+    for (const row of rows) {
+      const cleaned = stripShopifyDefaultTitle(row.name);
+      if (cleaned && cleaned !== row.name) update.run(cleaned, now, row.id);
+    }
+  });
+  write();
+}
+
 export function listProducts(): Product[] {
+  scrubShopifyDefaultTitleNames();
   const rows = getDb()
     .prepare(`
       SELECT p.id, p.product_group, p.name, p.description, p.retail_price, p.image_url, p.image_name,
@@ -578,11 +602,22 @@ export function ensureShopifyProduct(ref: {
 }): { id: number; created: boolean } {
   const existing = findProductIdForShopify(ref);
   if (existing) {
+    const db = getDb();
     if (ref.variantId) {
-      getDb().prepare(`UPDATE products SET shopify_variant_id = COALESCE(shopify_variant_id, ?) WHERE id = ?`).run(
+      db.prepare(`UPDATE products SET shopify_variant_id = COALESCE(shopify_variant_id, ?) WHERE id = ?`).run(
         ref.variantId,
         existing,
       );
+    }
+    if (ref.name) {
+      const current = db.prepare(`SELECT name FROM products WHERE id = ?`).get(existing) as { name: string } | undefined;
+      if (current && /default title/i.test(current.name) && !/default title/i.test(ref.name)) {
+        db.prepare(`UPDATE products SET name = ?, updated_at = ? WHERE id = ?`).run(
+          ref.name,
+          new Date().toISOString(),
+          existing,
+        );
+      }
     }
     return { id: existing, created: false };
   }
@@ -781,6 +816,7 @@ export function listSales(filters: { storeId: number | null; from: string | null
 }
 
 export function getStoreDetail(id: number): StoreDetail {
+  scrubShopifyDefaultTitleNames();
   const store = requireStore(id);
   const movements = listMovements({ storeId: id });
   return {
@@ -794,6 +830,7 @@ export function getStoreDetail(id: number): StoreDetail {
 }
 
 export function getProductDetail(id: number): ProductDetail {
+  scrubShopifyDefaultTitleNames();
   const product = requireProduct(id);
   const movements = listMovements({ productId: id });
   return {

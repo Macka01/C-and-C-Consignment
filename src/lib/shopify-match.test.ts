@@ -5,6 +5,9 @@ import {
   matchShopifyItem,
   matchShopifyLocation,
   normalizeShopifyName,
+  productRefFromItem,
+  shopifyProductName,
+  stripShopifyDefaultTitle,
   shelfBelongsAtStore,
   staysOnMatchedShelf,
   shopifyVariance,
@@ -44,6 +47,38 @@ describe("shopify inventory match", () => {
   it("treats punctuation and case as the same name", () => {
     assert.equal(normalizeShopifyName("Harbour  Linen"), normalizeShopifyName("harbour linen"));
     assert.equal(normalizeShopifyName("Flax Serve Bowl — Duck Egg"), "flax serve bowl duck egg");
+  });
+
+  it("drops Shopify Default Title from product names", () => {
+    assert.equal(stripShopifyDefaultTitle("Handmade Ceramic Trinket Dish - Default Title"), "Handmade Ceramic Trinket Dish");
+    assert.equal(stripShopifyDefaultTitle("Herb Sticks — Default Title"), "Herb Sticks");
+    assert.equal(
+      shopifyProductName({
+        title: "Handmade Ceramic Trinket Dish",
+        variantTitle: "Default Title",
+        displayName: "Handmade Ceramic Trinket Dish - Default Title",
+      }),
+      "Handmade Ceramic Trinket Dish",
+    );
+    assert.equal(
+      shopifyProductName({ title: "Flax Mug", variantTitle: "Khaki", displayName: "Flax Mug - Khaki" }),
+      "Flax Mug — Khaki",
+    );
+    assert.equal(normalizeShopifyName("Bowl - Default Title"), normalizeShopifyName("Bowl"));
+    assert.equal(
+      productRefFromItem({
+        variantId: "gid://shopify/ProductVariant/9",
+        sku: "TRINKET",
+        title: "Handmade Ceramic Trinket Dish",
+        variantTitle: "Default Title",
+        displayName: "Handmade Ceramic Trinket Dish - Default Title",
+        productType: "Bowl",
+        description: null,
+        price: 14,
+        onHand: 2,
+      }).name,
+      "Handmade Ceramic Trinket Dish",
+    );
   });
 
   it("matches a store to a Shopify location by name", () => {

@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getAppMeta, setAppMeta } from "@/lib/app-meta";
-import { compareStockToShopify, locationNameFromOrder, type ShopifyLocationInventory } from "@/lib/shopify-match";
+import {
+  compareStockToShopify,
+  locationNameFromOrder,
+  shopifyProductName,
+  type ShopifyLocationInventory,
+} from "@/lib/shopify-match";
 import { eventsSinceMs, shouldStopEventPages, type ShopifySyncOptions } from "@/lib/shopify-refresh";
 import { cacheShopifyProductImages } from "@/lib/shopify-image-cache";
 import { applyShopifyFeed, type ShopifyFeed } from "@/lib/shopify-sync";
@@ -217,11 +222,14 @@ function shopifyImageUrl(variant: GraphqlVariant | undefined) {
 }
 
 function refFromVariant(variant: GraphqlVariant | undefined, sku: string | null) {
-  const title = variant?.product?.title ?? variant?.displayName ?? variant?.title ?? "";
   return {
     variantId: variant?.id ?? null,
     sku: sku ?? variant?.sku ?? null,
-    name: variant?.displayName?.trim() || [title, variant?.title].filter(Boolean).join(" — ") || title,
+    name: shopifyProductName({
+      title: variant?.product?.title,
+      variantTitle: variant?.title,
+      displayName: variant?.displayName,
+    }),
     productGroup: variant?.product?.productType?.trim() || "Shopify",
     description: variant?.product?.description?.trim() || "",
     retailPrice: money(variant?.price) ?? 0,
@@ -369,7 +377,11 @@ async function fetchOrders(sinceMs: number | null): Promise<ShopifyOrderLine[]> 
             unitPrice,
             product: {
               ...product,
-              name: item.name?.trim() || product.name,
+              name: shopifyProductName({
+                title: variant?.product?.title,
+                variantTitle: variant?.title,
+                displayName: item.name || variant?.displayName,
+              }) || product.name,
               retailPrice: unitPrice ?? product.retailPrice,
             },
           });

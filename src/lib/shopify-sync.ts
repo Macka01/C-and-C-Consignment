@@ -2,6 +2,7 @@ import {
   ensureShopifyProduct,
   ensureShopifyStock,
   findProductIdForShopify,
+  scrubShopifyDefaultTitleNames,
   insertShopifyMovement,
   listStores,
   rememberShopifyLocation,
@@ -36,6 +37,7 @@ export type ShopifySyncResult = {
 };
 
 export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
+  scrubShopifyDefaultTitleNames();
   const stores = listStores();
   let createdProducts = 0;
   let movements = 0;

@@ -23,12 +23,46 @@ export type ShopifyProductRef = {
   imageUrl: string | null;
 };
 
+/** Shopify uses this for the only variant on a product with no size/colour options. */
+function isPlaceholderVariantTitle(value: string | null | undefined) {
+  return !value?.trim() || /^default title$/i.test(value.trim());
+}
+
+/** Drop Shopify's "Default Title" so the catalog shows the product name only. */
+export function stripShopifyDefaultTitle(value: string) {
+  return value
+    .replace(/\s*[-–—/]\s*Default Title\s*$/gi, "")
+    .replace(/^\s*Default Title\s*$/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function shopifyProductName(input: {
+  title?: string | null;
+  variantTitle?: string | null;
+  displayName?: string | null;
+}) {
+  const product = stripShopifyDefaultTitle(input.title ?? "");
+  const variant = isPlaceholderVariantTitle(input.variantTitle) ? "" : (input.variantTitle ?? "").trim();
+  if (product && variant) {
+    const productNorm = normalizeShopifyName(product);
+    const variantNorm = normalizeShopifyName(variant);
+    if (!productNorm.includes(variantNorm)) return `${product} — ${variant}`;
+    return product;
+  }
+  if (product) return product;
+  return stripShopifyDefaultTitle(input.displayName ?? "");
+}
+
 export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRef {
-  const name = item.displayName?.trim() || [item.title, item.variantTitle].filter(Boolean).join(" — ") || item.title;
   return {
     variantId: item.variantId,
     sku: item.sku,
-    name,
+    name: shopifyProductName({
+      title: item.title,
+      variantTitle: item.variantTitle,
+      displayName: item.displayName,
+    }),
     productGroup: item.productType?.trim() || "Shopify",
     description: item.description?.trim() || "",
     retailPrice: item.price ?? 0,
@@ -43,8 +77,7 @@ export type ShopifyLocationInventory = {
 };
 
 export function normalizeShopifyName(value: string) {
-  return value
-    .trim()
+  return stripShopifyDefaultTitle(value)
     .toLowerCase()
     .replace(/['’]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
