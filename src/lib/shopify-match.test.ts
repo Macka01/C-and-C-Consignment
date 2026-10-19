@@ -7,6 +7,7 @@ import {
   normalizeShopifyName,
   productRefFromItem,
   keepConsigneeCode,
+  shopifyCatalogName,
   shopifyProductName,
   stripShopifyDefaultTitle,
   shelfBelongsAtStore,
@@ -51,6 +52,10 @@ describe("shopify inventory match", () => {
   });
 
   it("drops Shopify Default Title from product names", () => {
+    assert.equal(shopifyCatalogName("Bowl - Default Title"), "Bowl");
+    assert.equal(shopifyCatalogName("Default Title", "SKU-1"), "SKU-1");
+    assert.equal(shopifyCatalogName("", null), "");
+    assert.equal(shopifyCatalogName("Default Title", "Default Title"), "");
     assert.equal(stripShopifyDefaultTitle("Handmade Ceramic Trinket Dish - Default Title"), "Handmade Ceramic Trinket Dish");
     assert.equal(stripShopifyDefaultTitle("Herb Sticks — Default Title"), "Herb Sticks");
     assert.equal(

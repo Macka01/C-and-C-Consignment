@@ -55,10 +55,11 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     rememberShopifyLocation(store.id, location.locationId);
     for (const item of location.items) {
       const ref = productRefFromItem(item);
-      if (!ref.name && !ref.sku && !ref.variantId) continue;
+      if (!ref.name) continue;
       const qty = onHandCount(item.onHand);
       if (qty <= 0) continue;
       const product = ensureShopifyProduct(ref);
+      if (!product) continue;
       if (product.created) createdProducts += 1;
       rememberImage(product.id, ref.imageUrl);
       ensureShopifyStock(store.id, product.id, qty);
@@ -71,6 +72,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     );
     if (!matched) continue;
     const product = ensureShopifyProduct(sale.product);
+    if (!product) continue;
     if (product.created) createdProducts += 1;
     rememberImage(product.id, sale.product.imageUrl);
     if (
@@ -93,6 +95,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     const matched = stores.find((row) => matchShopifyLocation(row.name, [{ locationId: "", locationName: event.locationName, items: [] }]));
     if (!matched) continue;
     const product = ensureShopifyProduct(event.product);
+    if (!product) continue;
     if (product.created) createdProducts += 1;
     rememberImage(product.id, event.product.imageUrl);
     if (

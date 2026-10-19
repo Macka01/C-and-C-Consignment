@@ -4,6 +4,7 @@ import { getAppMeta, setAppMeta } from "@/lib/app-meta";
 import {
   compareStockToShopify,
   locationNameFromOrder,
+  shopifyCatalogName,
   shopifyProductName,
   type ShopifyLocationInventory,
 } from "@/lib/shopify-match";
@@ -237,11 +238,14 @@ function refFromVariant(variant: GraphqlVariant | undefined, sku: string | null)
   return {
     variantId: variant?.id ?? null,
     sku: sku ?? variant?.sku ?? null,
-    name: shopifyProductName({
-      title: variant?.product?.title,
-      variantTitle: variant?.title,
-      displayName: variant?.displayName,
-    }),
+    name: shopifyCatalogName(
+      shopifyProductName({
+        title: variant?.product?.title,
+        variantTitle: variant?.title,
+        displayName: variant?.displayName,
+      }),
+      sku ?? variant?.sku,
+    ),
     productGroup: variant?.product?.productType?.trim() || "Shopify",
     description: variant?.product?.description?.trim() || "",
     retailPrice: money(variant?.price) ?? 0,

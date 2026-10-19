@@ -5,7 +5,7 @@ import os from "node:os";
 import { getDb, dataDir, reportsDir, usesExternalDataDir } from "@/lib/db";
 import { publicProductImageUrl } from "@/lib/shopify-product-image";
 import { HttpError } from "@/lib/errors";
-import { keepConsigneeCode, stripShopifyDefaultTitle } from "@/lib/shopify-match";
+import { keepConsigneeCode, shopifyCatalogName, stripShopifyDefaultTitle } from "@/lib/shopify-match";
 import { attachStockTotals } from "@/lib/stock-totals";
 import type {
   Dashboard,
@@ -396,6 +396,7 @@ export function listProducts(): Product[] {
              COUNT(st.id) AS store_count
       FROM products p
       LEFT JOIN store_stock st ON st.product_id = p.id AND (${stockedShelf})
+      WHERE TRIM(p.name) != ''
       GROUP BY p.id
       ORDER BY p.product_group COLLATE NOCASE, p.name COLLATE NOCASE
     `)
@@ -649,8 +650,9 @@ export function ensureShopifyProduct(ref: {
   description: string;
   retailPrice: number;
   imageUrl?: string | null;
-}): { id: number; created: boolean } {
-  const existing = findProductIdForShopify(ref);
+}): { id: number; created: boolean } | null {
+  const name = shopifyCatalogName(ref.name, ref.sku);
+  const existing = findProductIdForShopify({ ...ref, name });
   if (existing) {
     const db = getDb();
     if (ref.variantId) {
@@ -659,21 +661,18 @@ export function ensureShopifyProduct(ref: {
         existing,
       );
     }
-    if (ref.name) {
+    if (name) {
       const current = db.prepare(`SELECT name FROM products WHERE id = ?`).get(existing) as { name: string } | undefined;
-      if (current && /default title/i.test(current.name) && !/default title/i.test(ref.name)) {
-        db.prepare(`UPDATE products SET name = ?, updated_at = ? WHERE id = ?`).run(
-          ref.name,
-          new Date().toISOString(),
-          existing,
-        );
+      if (current && !shopifyCatalogName(current.name)) {
+        db.prepare(`UPDATE products SET name = ?, updated_at = ? WHERE id = ?`).run(name, new Date().toISOString(), existing);
       }
     }
     return { id: existing, created: false };
   }
+  if (!name) return null;
   const created = createProduct({
     productGroup: ref.productGroup || "Shopify",
-    name: ref.name,
+    name,
     description: ref.description,
     retailPrice: ref.retailPrice,
     shopifyVariantId: ref.variantId,

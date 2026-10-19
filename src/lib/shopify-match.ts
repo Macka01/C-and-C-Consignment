@@ -66,15 +66,27 @@ export function shopifyProductName(input: {
   return stripShopifyDefaultTitle(input.displayName ?? "");
 }
 
+/** Blank, or only Shopify's Default Title, is not a catalog name. A real SKU can stand in for a missing title. */
+export function shopifyCatalogName(name: string | null | undefined, sku?: string | null) {
+  const cleaned = stripShopifyDefaultTitle(name ?? "").trim();
+  if (cleaned) return cleaned;
+  const code = sku?.trim() ?? "";
+  if (code && !isPlaceholderShopifyCode(code)) return code;
+  return "";
+}
+
 export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRef {
   return {
     variantId: item.variantId,
     sku: item.sku,
-    name: shopifyProductName({
-      title: item.title,
-      variantTitle: item.variantTitle,
-      displayName: item.displayName,
-    }),
+    name: shopifyCatalogName(
+      shopifyProductName({
+        title: item.title,
+        variantTitle: item.variantTitle,
+        displayName: item.displayName,
+      }),
+      item.sku,
+    ),
     productGroup: item.productType?.trim() || "Shopify",
     description: item.description?.trim() || "",
     retailPrice: item.price ?? 0,
