@@ -173,7 +173,7 @@ const ORDERS_QUERY = `
 
 const TRANSFER_QUERY = `
   query ShopifyTransfers($cursor: String) {
-    inventoryTransfers(first: 50, after: $cursor, sortKey: DATE_CREATED, reverse: true) {
+    inventoryTransfers(first: 50, after: $cursor, sortKey: CREATED_AT, reverse: true) {
       pageInfo { hasNextPage endCursor }
       nodes {
         id
