@@ -1,11 +1,14 @@
+import fs from "node:fs";
+import path from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { formatMoney } from "@/lib/format";
 import { wrapLines, type StockListing } from "@/lib/stock-listing";
 
-
 const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 42;
-const TITLE_SIZE = 18;
+const LOGO_SIZE = 44;
+const BRAND_SIZE = 20;
+const TITLE_SIZE = 16;
 const META_SIZE = 11;
 const HEADER_SIZE = 8;
 const BODY_SIZE = 9;
@@ -24,6 +27,14 @@ const COLUMNS = [
 ];
 
 type Fonts = { regular: PDFFont; bold: PDFFont };
+
+export function cottonClayLogoPath() {
+  const files = [
+    path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "icon-192.png"),
+    path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "icon-512.png"),
+  ];
+  return files.find((file) => fs.existsSync(file)) ?? null;
+}
 
 function cellText(row: StockListing["rows"][number], key: (typeof COLUMNS)[number]["key"]) {
   if (key === "price") return formatMoney(row.price);
@@ -59,6 +70,8 @@ export async function buildStockListingPdf(listing: StockListing) {
     regular: await doc.embedFont(StandardFonts.Helvetica),
     bold: await doc.embedFont(StandardFonts.HelveticaBold),
   };
+  const logoFile = cottonClayLogoPath();
+  const logo = logoFile ? await doc.embedPng(fs.readFileSync(logoFile)) : null;
   const contentWidth = COLUMNS.reduce((sum, column) => sum + column.width, 0);
   const tableLeft = MARGIN;
   const headerLines = COLUMNS.map((column) =>
@@ -77,8 +90,26 @@ export async function buildStockListingPdf(listing: StockListing) {
   let y = PAGE.height - MARGIN;
 
   const paintHeader = () => {
-    drawText(page, "Cotton & Clay", tableLeft, y, fonts.regular, 8, MUTED);
-    y -= 16;
+    if (logo) {
+      page.drawImage(logo, {
+        x: tableLeft,
+        y: y - LOGO_SIZE,
+        width: LOGO_SIZE,
+        height: LOGO_SIZE,
+      });
+      drawText(
+        page,
+        "Cotton & Clay",
+        tableLeft + LOGO_SIZE + 12,
+        y - LOGO_SIZE / 2 - BRAND_SIZE * 0.35,
+        fonts.bold,
+        BRAND_SIZE,
+      );
+      y -= LOGO_SIZE + 14;
+    } else {
+      drawText(page, "Cotton & Clay", tableLeft, y, fonts.bold, BRAND_SIZE);
+      y -= 24;
+    }
     drawText(page, listing.title, tableLeft, y, fonts.bold, TITLE_SIZE);
     y -= 20;
     drawText(page, `Store: ${listing.storeName}`, tableLeft, y, fonts.regular, META_SIZE);

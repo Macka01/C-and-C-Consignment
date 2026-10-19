@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: devOrigins(),
   serverExternalPackages: ["better-sqlite3", "pdf-lib"],
   outputFileTracingIncludes: {
-    "/*": ["./node_modules/better-sqlite3/**/*", "./scripts/backup-data.mjs"],
+    "/*": ["./node_modules/better-sqlite3/**/*", "./scripts/backup-data.mjs", "./public/icon-192.png", "./public/icon-512.png"],
   },
   turbopack: {
     rules: {
