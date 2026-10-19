@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader, RefreshButton } from "@/components/feedback";
 import { ProductFormDialog } from "@/components/product-form-dialog";
+import { ProductPhoto } from "@/components/product-photo";
 import { matchesProductSearch } from "@/lib/stock-search";
 import { useResource } from "@/lib/use-resource";
 import { formatMoney } from "@/lib/format";
@@ -80,13 +81,16 @@ export function ProductsPage() {
           <ul className="grid gap-3 md:grid-cols-2">
             {items.map((product) => (
               <li key={product.id}>
-                <Link href={`/products/${product.id}`} className="block h-full rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/40">
-                  <p className="font-medium">{product.name}</p>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
-                  <p className="mt-3 text-sm">
-                    {formatMoney(product.retailPrice)} · {product.units} on shelves · {product.storeCount}{" "}
-                    {product.storeCount === 1 ? "store" : "stores"}
-                  </p>
+                <Link href={`/products/${product.id}`} className="flex h-full gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/40">
+                  <ProductPhoto url={product.imageUrl} name={product.name} />
+                  <div className="min-w-0">
+                    <p className="font-medium">{product.name}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
+                    <p className="mt-3 text-sm">
+                      {formatMoney(product.retailPrice)} · {product.units} on shelves · {product.storeCount}{" "}
+                      {product.storeCount === 1 ? "store" : "stores"}
+                    </p>
+                  </div>
                 </Link>
               </li>
             ))}

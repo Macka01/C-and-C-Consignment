@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import os from "node:os";
-import { getDb, reportsDir, usesExternalDataDir } from "@/lib/db";
+import { getDb, dataDir, reportsDir, usesExternalDataDir } from "@/lib/db";
+import { publicProductImageUrl } from "@/lib/shopify-product-image";
 import { HttpError } from "@/lib/errors";
 import { attachStockTotals } from "@/lib/stock-totals";
 import type {
@@ -42,6 +43,8 @@ type ProductRow = {
   retail_price: number;
   units: number;
   store_count: number;
+  image_url: string | null;
+  image_name: string | null;
 };
 
 type StockRow = {
@@ -54,6 +57,8 @@ type StockRow = {
   product_group: string;
   description: string;
   retail_price: number;
+  image_url: string | null;
+  image_name: string | null;
   store_name: string | null;
 };
 
@@ -120,6 +125,7 @@ function mapProduct(row: ProductRow): Product {
     retailPrice: row.retail_price,
     units: row.units ?? 0,
     storeCount: row.store_count ?? 0,
+    imageUrl: row.image_name ? publicProductImageUrl(row.id, row.image_name) : null,
   };
 }
 
@@ -134,6 +140,7 @@ function mapStock(row: StockRow): StockLine {
     productGroup: row.product_group,
     description: row.description,
     retailPrice: row.retail_price,
+    imageUrl: row.image_name ? publicProductImageUrl(row.product_id, row.image_name) : null,
     storeName: row.store_name ?? undefined,
     shopifyQtyOnHand: null,
     variance: null,
@@ -239,6 +246,16 @@ export type InvoiceInput = {
   notes: string | null;
 };
 
+export function productImagesDir() {
+  const dir = path.join(/*turbopackIgnore: true*/ dataDir(), "product-images");
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+export function productImagePath(storedName: string) {
+  return path.join(/*turbopackIgnore: true*/ productImagesDir(), storedName);
+}
+
 function requireStore(id: number) {
   const store = getStore(id);
   if (!store) throw new HttpError("That store was not found.", 404);
@@ -302,7 +319,7 @@ export function deleteStore(id: number) {
 export function listProducts(): Product[] {
   const rows = getDb()
     .prepare(`
-      SELECT p.id, p.product_group, p.name, p.description, p.retail_price,
+      SELECT p.id, p.product_group, p.name, p.description, p.retail_price, p.image_url, p.image_name,
              COALESCE(SUM(st.quantity), 0) AS units,
              COUNT(st.id) AS store_count
       FROM products p
@@ -317,7 +334,7 @@ export function listProducts(): Product[] {
 export function getProduct(id: number): Product | null {
   const row = getDb()
     .prepare(`
-      SELECT p.id, p.product_group, p.name, p.description, p.retail_price,
+      SELECT p.id, p.product_group, p.name, p.description, p.retail_price, p.image_url, p.image_name,
              COALESCE(SUM(st.quantity), 0) AS units,
              COUNT(st.id) AS store_count
       FROM products p
@@ -373,6 +390,8 @@ export function deleteProduct(id: number) {
   if (used.n > 0) {
     throw new HttpError("This product is on a shelf or already has history. Edit it instead of deleting it.", 409);
   }
+  const image = getProductImageRecord(id);
+  if (image?.imageName) fs.rmSync(productImagePath(image.imageName), { force: true });
   db.prepare(`DELETE FROM products WHERE id = ?`).run(id);
 }
 
@@ -380,7 +399,7 @@ export function listStock(storeId: number): StockLine[] {
   const rows = getDb()
     .prepare(`
       SELECT st.id, st.store_id, st.product_id, st.consignee_code, st.quantity,
-             p.name AS product_name, p.product_group, p.description, p.retail_price,
+             p.name AS product_name, p.product_group, p.description, p.retail_price, p.image_url, p.image_name,
              s.name AS store_name
       FROM store_stock st
       JOIN products p ON p.id = st.product_id
@@ -396,7 +415,7 @@ export function listStockForProduct(productId: number): StockLine[] {
   const rows = getDb()
     .prepare(`
       SELECT st.id, st.store_id, st.product_id, st.consignee_code, st.quantity,
-             p.name AS product_name, p.product_group, p.description, p.retail_price,
+             p.name AS product_name, p.product_group, p.description, p.retail_price, p.image_url, p.image_name,
              s.name AS store_name
       FROM store_stock st
       JOIN products p ON p.id = st.product_id
@@ -555,6 +574,7 @@ export function ensureShopifyProduct(ref: {
   productGroup: string;
   description: string;
   retailPrice: number;
+  imageUrl?: string | null;
 }): { id: number; created: boolean } {
   const existing = findProductIdForShopify(ref);
   if (existing) {
@@ -574,6 +594,36 @@ export function ensureShopifyProduct(ref: {
     shopifyVariantId: ref.variantId,
   });
   return { id: created.id, created: true };
+}
+
+export function getProductImageRecord(id: number): {
+  shopifyUrl: string | null;
+  imageName: string | null;
+  imageMime: string | null;
+} | null {
+  const row = getDb()
+    .prepare(`SELECT image_url, image_name, image_mime FROM products WHERE id = ?`)
+    .get(id) as { image_url: string | null; image_name: string | null; image_mime: string | null } | undefined;
+  if (!row) return null;
+  return { shopifyUrl: row.image_url, imageName: row.image_name, imageMime: row.image_mime };
+}
+
+export function saveProductImage(id: number, shopifyUrl: string, storedName: string, mime: string) {
+  const previous = getProductImageRecord(id);
+  getDb()
+    .prepare(`UPDATE products SET image_url = ?, image_name = ?, image_mime = ?, updated_at = ? WHERE id = ?`)
+    .run(shopifyUrl, storedName, mime, new Date().toISOString(), id);
+  if (previous?.imageName && previous.imageName !== storedName) {
+    fs.rmSync(productImagePath(previous.imageName), { force: true });
+  }
+}
+
+export function readProductImage(id: number): { bytes: Buffer; mime: string } | null {
+  const row = getProductImageRecord(id);
+  if (!row?.imageName) return null;
+  const file = productImagePath(row.imageName);
+  if (!fs.existsSync(file)) return null;
+  return { bytes: fs.readFileSync(file), mime: row.imageMime || "image/jpeg" };
 }
 
 export function rememberShopifyLocation(storeId: number, locationId: string) {

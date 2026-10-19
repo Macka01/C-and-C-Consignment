@@ -10,6 +10,7 @@ export type ShopifyInventoryItem = {
   description: string | null;
   price: number | null;
   onHand: number;
+  imageUrl?: string | null;
 };
 
 export type ShopifyProductRef = {
@@ -19,6 +20,7 @@ export type ShopifyProductRef = {
   productGroup: string;
   description: string;
   retailPrice: number;
+  imageUrl: string | null;
 };
 
 export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRef {
@@ -30,6 +32,7 @@ export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRe
     productGroup: item.productType?.trim() || "Shopify",
     description: item.description?.trim() || "",
     retailPrice: item.price ?? 0,
+    imageUrl: item.imageUrl ?? null,
   };
 }
 

@@ -3,6 +3,7 @@ import path from "node:path";
 import { getAppMeta, setAppMeta } from "@/lib/app-meta";
 import { compareStockToShopify, locationNameFromOrder, type ShopifyLocationInventory } from "@/lib/shopify-match";
 import { eventsSinceMs, shouldStopEventPages, type ShopifySyncOptions } from "@/lib/shopify-refresh";
+import { cacheShopifyProductImages } from "@/lib/shopify-image-cache";
 import { applyShopifyFeed, type ShopifyFeed } from "@/lib/shopify-sync";
 import type { ShopifyOrderLine, ShopifyTransferLine } from "@/lib/shopify-match";
 import type { ProductDetail, ShopifyStockStatus, StockLine, StoreDetail } from "@/lib/types";
@@ -61,13 +62,21 @@ function cacheKey() {
   return mockPath() || `${shopDomain()}|${accessToken()}`;
 }
 
+type GraphqlImage = { url: string | null } | null;
+
 type GraphqlVariant = {
   id: string | null;
   title: string | null;
   displayName: string | null;
   sku: string | null;
   price: string | null;
-  product: { title: string; productType: string | null; description: string | null } | null;
+  image: GraphqlImage;
+  product: {
+    title: string;
+    productType: string | null;
+    description: string | null;
+    featuredImage: GraphqlImage;
+  } | null;
 };
 
 type GraphqlLocation = {
@@ -87,7 +96,8 @@ type GraphqlLocation = {
 
 const VARIANT_FIELDS = `
   id title displayName sku price
-  product { title productType description }
+  image { url }
+  product { title productType description featuredImage { url } }
 `;
 
 const LOCATION_QUERY = `
@@ -158,11 +168,7 @@ const ORDERS_QUERY = `
             name
             originalUnitPriceSet { shopMoney { amount } }
             variant {
-              id
-              sku
-              title
-              price
-              product { title productType description }
+              ${VARIANT_FIELDS}
             }
           }
         }
@@ -206,6 +212,10 @@ function money(value: string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function shopifyImageUrl(variant: GraphqlVariant | undefined) {
+  return variant?.image?.url?.trim() || variant?.product?.featuredImage?.url?.trim() || null;
+}
+
 function refFromVariant(variant: GraphqlVariant | undefined, sku: string | null) {
   const title = variant?.product?.title ?? variant?.displayName ?? variant?.title ?? "";
   return {
@@ -215,6 +225,7 @@ function refFromVariant(variant: GraphqlVariant | undefined, sku: string | null)
     productGroup: variant?.product?.productType?.trim() || "Shopify",
     description: variant?.product?.description?.trim() || "",
     retailPrice: money(variant?.price) ?? 0,
+    imageUrl: shopifyImageUrl(variant),
   };
 }
 
@@ -232,6 +243,7 @@ function itemsFromLevels(nodes: GraphqlLocation["inventoryLevels"]["nodes"]) {
       description: variant?.product?.description ?? null,
       price: money(variant?.price),
       onHand: quantityOnHand(node.quantities),
+      imageUrl: shopifyImageUrl(variant),
     });
   }
   return items;
@@ -346,6 +358,7 @@ async function fetchOrders(sinceMs: number | null): Promise<ShopifyOrderLine[]> 
           if (item.quantity <= 0) continue;
           const variant = item.variant ?? undefined;
           const unitPrice = money(item.originalUnitPriceSet?.shopMoney?.amount) ?? money(variant?.price);
+          const product = refFromVariant(variant, item.sku);
           lines.push({
             id: item.id,
             orderName: order.name,
@@ -355,12 +368,9 @@ async function fetchOrders(sinceMs: number | null): Promise<ShopifyOrderLine[]> 
             quantity: item.quantity,
             unitPrice,
             product: {
-              variantId: variant?.id ?? null,
-              sku: item.sku ?? variant?.sku ?? null,
-              name: item.name?.trim() || refFromVariant(variant, item.sku).name,
-              productGroup: variant?.product?.productType?.trim() || "Shopify",
-              description: variant?.product?.description?.trim() || "",
-              retailPrice: unitPrice ?? 0,
+              ...product,
+              name: item.name?.trim() || product.name,
+              retailPrice: unitPrice ?? product.retailPrice,
             },
           });
         }
@@ -473,7 +483,10 @@ async function refreshFeed(key: string): Promise<FeedResult> {
   const state = shopifyState();
   try {
     const { feed, warning } = await fetchShopifyFeed();
-    if (feed) applyShopifyFeed(feed);
+    if (feed) {
+      const applied = applyShopifyFeed(feed);
+      await cacheShopifyProductImages(applied.images);
+    }
     const result: FeedResult = { feed, error: null, warning };
     state.cache = { key, at: Date.now(), ...result };
     return result;

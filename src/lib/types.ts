@@ -20,6 +20,7 @@ export type Product = {
   retailPrice: number;
   units: number;
   storeCount: number;
+  imageUrl: string | null;
 };
 
 export type ShopifyMatch = "matched" | "no_location" | "no_product" | "unavailable";
@@ -40,6 +41,7 @@ export type StockLine = {
   productGroup: string;
   description: string;
   retailPrice: number;
+  imageUrl: string | null;
   storeName?: string;
   shopifyQtyOnHand: number | null;
   variance: number | null;

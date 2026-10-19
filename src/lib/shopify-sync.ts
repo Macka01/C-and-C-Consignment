@@ -32,6 +32,7 @@ export type ShopifySyncResult = {
   createdProducts: number;
   movements: number;
   storesMatched: number;
+  images: Array<{ productId: number; url: string }>;
 };
 
 export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
@@ -39,6 +40,11 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
   let createdProducts = 0;
   let movements = 0;
   let storesMatched = 0;
+  const images: Array<{ productId: number; url: string }> = [];
+
+  function rememberImage(productId: number, url: string | null | undefined) {
+    if (url?.trim()) images.push({ productId, url: url.trim() });
+  }
 
   for (const store of stores) {
     const location = matchShopifyLocation(store.name, feed.locations);
@@ -52,6 +58,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
       if (qty <= 0) continue;
       const product = ensureShopifyProduct(ref);
       if (product.created) createdProducts += 1;
+      rememberImage(product.id, ref.imageUrl);
       ensureShopifyStock(store.id, product.id, ref.sku ?? "", qty);
     }
   }
@@ -63,6 +70,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     if (!matched) continue;
     const product = ensureShopifyProduct(sale.product);
     if (product.created) createdProducts += 1;
+    rememberImage(product.id, sale.product.imageUrl);
     if (
       insertShopifyMovement({
         gid: sale.gid,
@@ -84,6 +92,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     if (!matched) continue;
     const product = ensureShopifyProduct(event.product);
     if (product.created) createdProducts += 1;
+    rememberImage(product.id, event.product.imageUrl);
     if (
       insertShopifyMovement({
         gid: event.gid,
@@ -106,7 +115,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     dropShelvesShopifyDoesNotStock(store.id, location);
   }
 
-  return { createdProducts, movements, storesMatched };
+  return { createdProducts, movements, storesMatched, images };
 }
 
 function dropShelvesShopifyDoesNotStock(storeId: number, location: ShopifyLocationInventory) {

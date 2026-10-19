@@ -16,6 +16,7 @@ import { InvoiceList } from "@/components/invoice-list";
 import { InvoiceFormDialog } from "@/components/invoice-form-dialog";
 import { ReportPanel } from "@/components/report-panel";
 import { ShopifyMatchNote, ShopifyStockNote } from "@/components/shopify-qty";
+import { ProductPhoto } from "@/components/product-photo";
 import { StockListingCounts, StockOnHandBox } from "@/components/stock-summary";
 import { api } from "@/lib/api-client";
 import { matchesStockSearch } from "@/lib/stock-search";
@@ -184,7 +185,8 @@ function StockRow({ line }: { line: StockLine }) {
         href={`/products/${line.productId}`}
         className="flex items-start justify-between gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/40"
       >
-        <div className="min-w-0 grid gap-1">
+        <ProductPhoto url={line.imageUrl} name={line.productName} />
+        <div className="min-w-0 grid flex-1 gap-1">
           <p className="font-medium">{line.productName}</p>
           <p className="text-sm text-muted-foreground">
             {line.productGroup}

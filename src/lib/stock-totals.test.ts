@@ -42,6 +42,7 @@ describe("stock movement totals", () => {
       productGroup: "Flax ceramics",
       description: "",
       retailPrice: 15,
+      imageUrl: null,
       shopifyQtyOnHand: 7,
       variance: 0,
       shopifyMatch: "matched",

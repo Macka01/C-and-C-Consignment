@@ -46,6 +46,7 @@ next-env.d.ts
 /data/*.db-*
 /data/reports/*
 !/data/reports/.gitkeep
+/data/product-images/*
 /data/backups/
 /backups/
 /server/macos/host.env

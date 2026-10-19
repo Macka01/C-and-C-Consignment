@@ -20,6 +20,7 @@ describe("shopify feed mapping", () => {
           productGroup: "Herb",
           description: "",
           retailPrice: 12,
+          imageUrl: null,
         },
       },
       {
@@ -37,6 +38,7 @@ describe("shopify feed mapping", () => {
           productGroup: "Herb",
           description: "",
           retailPrice: 12,
+          imageUrl: null,
         },
       },
     ]);
@@ -80,6 +82,7 @@ describe("shopify feed mapping", () => {
           productGroup: "Clay",
           description: "",
           retailPrice: 20,
+          imageUrl: null,
         },
       },
     ]);
