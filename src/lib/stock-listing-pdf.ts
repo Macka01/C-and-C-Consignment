@@ -6,7 +6,7 @@ import { wrapLines, type StockListing } from "@/lib/stock-listing";
 
 const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 42;
-const LOGO_SIZE = 44;
+const LOGO_SIZE = 72;
 const BRAND_SIZE = 20;
 const TITLE_SIZE = 16;
 const META_SIZE = 11;
@@ -30,10 +30,19 @@ type Fonts = { regular: PDFFont; bold: PDFFont };
 
 export function cottonClayLogoPath() {
   const files = [
+    path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "cotton-and-clay-logo.png"),
     path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "icon-192.png"),
     path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "icon-512.png"),
   ];
   return files.find((file) => fs.existsSync(file)) ?? null;
+}
+
+async function embedLogo(doc: PDFDocument, file: string) {
+  const bytes = fs.readFileSync(file);
+  if (file.toLowerCase().endsWith(".jpg") || file.toLowerCase().endsWith(".jpeg")) {
+    return doc.embedJpg(bytes);
+  }
+  return doc.embedPng(bytes);
 }
 
 function cellText(row: StockListing["rows"][number], key: (typeof COLUMNS)[number]["key"]) {
@@ -71,7 +80,7 @@ export async function buildStockListingPdf(listing: StockListing) {
     bold: await doc.embedFont(StandardFonts.HelveticaBold),
   };
   const logoFile = cottonClayLogoPath();
-  const logo = logoFile ? await doc.embedPng(fs.readFileSync(logoFile)) : null;
+  const logo = logoFile ? await embedLogo(doc, logoFile) : null;
   const contentWidth = COLUMNS.reduce((sum, column) => sum + column.width, 0);
   const tableLeft = MARGIN;
   const headerLines = COLUMNS.map((column) =>
