@@ -1,7 +1,8 @@
 import { deleteStore, getStoreDetail, updateStore } from "@/lib/data";
 import { fail, json, live, readJson, type IdContext } from "@/lib/handlers";
 import { parseStore } from "@/lib/parse";
-import { shopifySyncOptions, withShopifyStock } from "@/lib/shopify-inventory";
+import { withShopifyStock } from "@/lib/shopify-inventory";
+import { shopifySyncOptions } from "@/lib/shopify-refresh";
 import { positiveId } from "@/lib/validate";
 
 export async function GET(request: Request, ctx: IdContext) {

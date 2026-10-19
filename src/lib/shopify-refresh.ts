@@ -1,3 +1,9 @@
+export type ShopifySyncOptions = { wait?: boolean };
+
+export function shopifySyncOptions(request: Request): ShopifySyncOptions {
+  return { wait: new URL(request.url).searchParams.get("refresh") === "1" };
+}
+
 export const SHOPIFY_EVENT_OVERLAP_MS = 2 * 24 * 60 * 60 * 1000;
 
 /** Last successful pull, minus overlap, so we do not miss a late fulfillment. Null means fetch history. */

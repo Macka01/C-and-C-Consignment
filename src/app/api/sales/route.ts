@@ -1,6 +1,7 @@
 import { listSales } from "@/lib/data";
 import { fail, json, live } from "@/lib/handlers";
-import { shopifySyncOptions, syncFromShopify } from "@/lib/shopify-inventory";
+import { syncFromShopify } from "@/lib/shopify-inventory";
+import { shopifySyncOptions } from "@/lib/shopify-refresh";
 import { queryDate, queryId } from "@/lib/validate";
 
 export async function GET(request: Request) {

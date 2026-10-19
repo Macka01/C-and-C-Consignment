@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getAppMeta, setAppMeta } from "@/lib/data";
+import { getAppMeta, setAppMeta } from "@/lib/app-meta";
 import { compareStockToShopify, locationNameFromOrder, type ShopifyLocationInventory } from "@/lib/shopify-match";
-import { eventsSinceMs, shouldStopEventPages } from "@/lib/shopify-refresh";
+import { eventsSinceMs, shouldStopEventPages, type ShopifySyncOptions } from "@/lib/shopify-refresh";
 import { applyShopifyFeed, type ShopifyFeed } from "@/lib/shopify-sync";
 import type { ShopifyOrderLine, ShopifyTransferLine } from "@/lib/shopify-match";
 import type { ProductDetail, ShopifyStockStatus, StockLine, StoreDetail } from "@/lib/types";
@@ -37,12 +37,6 @@ function shopifyState(): ShopifyRuntime {
     globalForShopify.consignmentShopify = {};
   }
   return globalForShopify.consignmentShopify;
-}
-
-export type ShopifySyncOptions = { wait?: boolean };
-
-export function shopifySyncOptions(request: Request): ShopifySyncOptions {
-  return { wait: new URL(request.url).searchParams.get("refresh") === "1" };
 }
 
 function shopDomain() {
