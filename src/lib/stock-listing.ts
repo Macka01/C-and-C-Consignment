@@ -1,4 +1,4 @@
-import { stockLineOnShelf } from "./shopify-match.ts";
+import { stockLineOnShelf } from "@/lib/shopify-match";
 import type { StockLine } from "@/lib/types";
 
 export const STOCK_LISTING_TITLE = "Consignment Stock Listing";

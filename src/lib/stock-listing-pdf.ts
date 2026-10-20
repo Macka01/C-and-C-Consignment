@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { formatMoney } from "./format.ts";
-import { pdfSafeText, wrapLines, type StockListing } from "./stock-listing.ts";
+import { formatMoney } from "@/lib/format";
+import { pdfSafeText, wrapLines, type StockListing } from "@/lib/stock-listing";
 
 const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 42;
