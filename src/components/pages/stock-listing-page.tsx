@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ErrorBlock, LoadingBlock } from "@/components/feedback";
 import { formatMoney } from "@/lib/format";
-import { downloadPdf, filenameFromDisposition, isShareCancel, trySharePdf } from "@/lib/share-pdf";
+import { listingEmailHref } from "@/lib/listing-email";
+import { downloadFile, downloadPdf, filenameFromDisposition } from "@/lib/share-pdf";
 import type { StockListing } from "@/lib/stock-listing";
 import { useResource } from "@/lib/use-resource";
 
@@ -35,24 +36,20 @@ export function StockListingPage() {
   }
 
   async function emailListing() {
-    if (!report) return;
+    if (!listingHref) throw new Error("Choose a store on Reports first.");
     setBusy("email");
     try {
-      const file = await listingPdf();
-      const result = await trySharePdf(file, report.title);
-      if (result === "unsupported") {
-        downloadPdf(file);
-        const subject = encodeURIComponent(`${report.title} — ${report.storeName}`);
-        const body = encodeURIComponent(
-          `The ${report.title} for ${report.storeName} (${report.reportDate}) was saved as ${file.name}. Attach that PDF from Downloads.`,
-        );
-        window.setTimeout(() => {
-          window.location.href = `mailto:?subject=${subject}&body=${body}`;
-        }, 400);
-        toast.message("The PDF was saved to Downloads. Attach it in the Mail message.");
+      const response = await fetch(listingEmailHref(listingHref));
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? "The report could not be emailed.");
       }
+      const blob = await response.blob();
+      const filename =
+        filenameFromDisposition(response.headers.get("content-disposition")) ?? "consignment-stock-listing.eml";
+      downloadFile(new File([blob], filename, { type: "message/rfc822" }));
+      toast.success("Mail draft saved with the PDF attached. Open it in Mail to send.");
     } catch (error) {
-      if (isShareCancel(error)) return;
       toast.error(error instanceof Error ? error.message : "The report could not be emailed.");
     } finally {
       setBusy(null);

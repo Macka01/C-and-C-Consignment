@@ -36,7 +36,7 @@ export async function trySharePdf(file: File, title: string, shareFn?: ShareFn):
   }
 }
 
-export function downloadPdf(file: File) {
+export function downloadFile(file: File) {
   const url = URL.createObjectURL(file);
   const link = document.createElement("a");
   link.href = url;
@@ -45,4 +45,8 @@ export function downloadPdf(file: File) {
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+export function downloadPdf(file: File) {
+  downloadFile(file);
 }
