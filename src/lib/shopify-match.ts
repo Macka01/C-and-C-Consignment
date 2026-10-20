@@ -171,12 +171,15 @@ export function onHandCount(value: number) {
   return Math.max(0, Math.round(qty));
 }
 
-/** A shelf row belongs at a store when Shopify still has some there, or a Shopify sale/transfer already happened. */
+/** Original rule: qty > 0 at this store, or a sale/transfer already happened there. */
 export function shelfBelongsAtStore(quantity: number, shopifyMovementCount: number) {
   return onHandCount(quantity) > 0 || shopifyMovementCount > 0;
 }
 
-/** onHand is null when Shopify does not list the product at this location. */
+/**
+ * Shopify inventoryLevels often returns 0 at locations that never held the item.
+ * That empty level is not stock. Only on-hand > 0, or a sale/transfer, keeps the row.
+ */
 export function staysOnMatchedShelf(onHand: number | null, shopifyMovementCount: number) {
   if (shopifyMovementCount > 0) return true;
   return onHand !== null && onHandCount(onHand) > 0;
@@ -186,7 +189,7 @@ export function shelfMovementCount(line: { transferredIn: number; transferredOut
   return line.transferredIn + line.transferredOut + line.sales;
 }
 
-/** Same rule as store stock: on-hand at this location, or a prior sale/transfer there. Not the whole catalog. */
+/** Stock tab, listing page, and PDF: the original shelfBelongsAtStore rule. */
 export function stockLineOnShelf(line: {
   quantity: number;
   shopifyQtyOnHand: number | null;
@@ -196,11 +199,13 @@ export function stockLineOnShelf(line: {
   sales: number;
 }) {
   const movements = shelfMovementCount(line);
-  if (line.shopifyMatch === "matched") {
-    return staysOnMatchedShelf(line.shopifyQtyOnHand ?? line.quantity, movements);
+  // A numeric Shopify on-hand includes 0. Do not treat that empty inventory level as stock,
+  // and do not fall back to leftover local quantity.
+  if (typeof line.shopifyQtyOnHand === "number") {
+    return shelfBelongsAtStore(line.shopifyQtyOnHand, movements);
   }
   if (line.shopifyMatch === "no_product") {
-    return movements > 0;
+    return shelfBelongsAtStore(0, movements);
   }
   return shelfBelongsAtStore(line.quantity, movements);
 }
