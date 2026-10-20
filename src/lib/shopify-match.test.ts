@@ -4,6 +4,7 @@ import {
   compareStockToShopify,
   matchShopifyItem,
   matchShopifyLocation,
+  matchStoreForShopifyEvent,
   normalizeShopifyName,
   productRefFromItem,
   keepConsigneeCode,
@@ -135,6 +136,15 @@ describe("shopify inventory match", () => {
   it("matches a store to a Shopify location by name", () => {
     assert.equal(matchShopifyLocation("Harbour Linen", [harbour])?.locationName, "Harbour Linen");
     assert.equal(matchShopifyLocation("Unknown Shop", [harbour]), null);
+  });
+
+  it("does not treat an empty Shopify location as Love Local", () => {
+    assert.equal(matchShopifyLocation("Love Local", [{ locationId: "", locationName: "", items: [] }]), null);
+    assert.equal(matchStoreForShopifyEvent("Love Local", ""), false);
+    assert.equal(matchStoreForShopifyEvent("Love Local", null), false);
+    assert.equal(matchStoreForShopifyEvent("Love Local", "Local"), false);
+    assert.equal(matchStoreForShopifyEvent("Love Local", "Harbour Linen"), false);
+    assert.equal(matchStoreForShopifyEvent("Love Local", "Love Local"), true);
   });
 
   it("matches a product by consignee code to SKU, then by name", () => {

@@ -136,13 +136,25 @@ export function normalizeShopifyName(value: string) {
 export function matchShopifyLocation(storeName: string, locations: ShopifyLocationInventory[]) {
   const needle = normalizeShopifyName(storeName);
   if (!needle) return null;
-  const exact = locations.filter((location) => normalizeShopifyName(location.locationName) === needle);
+  const exact = locations.filter((location) => {
+    const name = normalizeShopifyName(location.locationName);
+    return Boolean(name) && name === needle;
+  });
   if (exact.length === 1) return exact[0];
   const loose = locations.filter((location) => {
     const name = normalizeShopifyName(location.locationName);
+    if (!name) return false;
     return name.includes(needle) || needle.includes(name);
   });
   return loose.length === 1 ? loose[0] : null;
+}
+
+/** Sales and transfers must name the shop. An empty location is not Love Local. */
+export function matchStoreForShopifyEvent(storeName: string, locationName: string | null | undefined) {
+  const needle = normalizeShopifyName(storeName);
+  const name = normalizeShopifyName(locationName ?? "");
+  if (!needle || !name) return false;
+  return name === needle;
 }
 
 function itemNames(item: ShopifyInventoryItem) {
@@ -316,24 +328,30 @@ export function movementsFromTransfers(transfers: ShopifyTransferLine[]): Shopif
     const status = line.status.toLowerCase();
     if (status.includes("cancel") || status === "draft" || line.quantity <= 0) continue;
     const date = day(line.occurredOn);
-    events.push({
-      gid: `${line.id}:out`,
-      locationName: line.originName,
-      type: "transfer_out",
-      occurredOn: date,
-      quantity: line.quantity,
-      notes: `Shopify transfer to ${line.destinationName}`,
-      product: line.product,
-    });
-    events.push({
-      gid: `${line.id}:in`,
-      locationName: line.destinationName,
-      type: "transfer_in",
-      occurredOn: date,
-      quantity: line.quantity,
-      notes: `Shopify transfer from ${line.originName}`,
-      product: line.product,
-    });
+    const origin = line.originName.trim();
+    const destination = line.destinationName.trim();
+    if (origin) {
+      events.push({
+        gid: `${line.id}:out`,
+        locationName: origin,
+        type: "transfer_out",
+        occurredOn: date,
+        quantity: line.quantity,
+        notes: `Shopify transfer to ${destination || "unknown location"}`,
+        product: line.product,
+      });
+    }
+    if (destination) {
+      events.push({
+        gid: `${line.id}:in`,
+        locationName: destination,
+        type: "transfer_in",
+        occurredOn: date,
+        quantity: line.quantity,
+        notes: `Shopify transfer from ${origin || "unknown location"}`,
+        product: line.product,
+      });
+    }
   }
   return events;
 }

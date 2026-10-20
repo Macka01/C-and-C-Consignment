@@ -98,6 +98,17 @@ describe("store shelf membership SQL", () => {
     assert.ok(!rows.some((row) => /Christmas Bell|Flax Mug|Honey Pot/.test(row.product_name)));
   });
 
+  it("lists leftover catalog rows once a bogus Love Local movement exists", () => {
+    const db = new Database(":memory:");
+    seedLoveLocalLeftovers(db);
+    db.prepare(
+      `INSERT INTO movements (store_id, product_id, type, quantity, shopify_gid)
+       VALUES (1, 2, 'transfer_in', 1, 'gid://shopify/InventoryTransferLineItem/bell:in')`,
+    ).run();
+    const rows = listingSql(db, 1);
+    assert.ok(rows.some((row) => row.product_name === "Christmas Bell - Large"));
+  });
+
   it("deletes leftover qty-0 rows that have no code and no movements", () => {
     const db = new Database(":memory:");
     seedLoveLocalLeftovers(db);

@@ -135,4 +135,27 @@ describe("shopify feed mapping", () => {
       ],
     );
   });
+
+  it("does not attribute a transfer with a blank location to a shop", () => {
+    const events = movementsFromTransfers([
+      {
+        id: "xfer-blank",
+        status: "TRANSFERRED",
+        occurredOn: "2026-10-08T00:00:00Z",
+        originName: "",
+        destinationName: "",
+        quantity: 4,
+        product: {
+          variantId: "gid://shopify/ProductVariant/2",
+          sku: "BELL",
+          name: "Christmas Bell - Large",
+          productGroup: "Christmas Decorations",
+          description: "",
+          retailPrice: 18,
+          imageUrl: null,
+        },
+      },
+    ]);
+    assert.deepEqual(events, []);
+  });
 });

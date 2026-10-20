@@ -14,6 +14,7 @@ import {
 } from "@/lib/data";
 import {
   matchShopifyLocation,
+  matchStoreForShopifyEvent,
   catalogImageJobs,
   movementsFromTransfers,
   onHandCount,
@@ -69,9 +70,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
   }
 
   for (const sale of salesFromOrders(feed.orders)) {
-    const matched = stores.find((row) =>
-      matchShopifyLocation(row.name, [{ locationId: "", locationName: sale.locationName, items: [] }]),
-    );
+    const matched = stores.find((row) => matchStoreForShopifyEvent(row.name, sale.locationName));
     if (!matched) continue;
     const product = ensureShopifyProduct(sale.product);
     if (!product) continue;
@@ -94,7 +93,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
   }
 
   for (const event of movementsFromTransfers(feed.transfers)) {
-    const matched = stores.find((row) => matchShopifyLocation(row.name, [{ locationId: "", locationName: event.locationName, items: [] }]));
+    const matched = stores.find((row) => matchStoreForShopifyEvent(row.name, event.locationName));
     if (!matched) continue;
     const product = ensureShopifyProduct(event.product);
     if (!product) continue;
