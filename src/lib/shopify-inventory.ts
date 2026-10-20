@@ -5,6 +5,7 @@ import {
   compareStockToShopify,
   locationNameFromOrder,
   shopifyCatalogName,
+  shopifyProductGroup,
   shopifyProductName,
   type ShopifyLocationInventory,
 } from "@/lib/shopify-match";
@@ -281,7 +282,7 @@ function refFromVariant(variant: GraphqlVariant | undefined, sku: string | null)
       }),
       sku ?? variant?.sku,
     ),
-    productGroup: variant?.product?.productType?.trim() || "Shopify",
+    productGroup: shopifyProductGroup(variant?.product?.productType),
     description: variant?.product?.description?.trim() || "",
     retailPrice: money(variant?.price) ?? 0,
     imageUrl: shopifyImageUrl(variant),

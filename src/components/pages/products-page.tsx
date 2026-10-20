@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader, RefreshButton } from "@/components/feedback";
 import { ProductFormDialog } from "@/components/product-form-dialog";
 import { ProductPhoto } from "@/components/product-photo";
+import { groupByProductGroup } from "@/lib/product-groups";
 import { matchesProductSearch } from "@/lib/stock-search";
 import { useResource } from "@/lib/use-resource";
 import { formatMoney } from "@/lib/format";
@@ -21,12 +22,7 @@ export function ProductsPage() {
     () => (catalog ?? []).filter((product) => matchesProductSearch(product, query)),
     [catalog, query],
   );
-  const groups = new Map<string, Product[]>();
-  for (const product of visible) {
-    const list = groups.get(product.productGroup) ?? [];
-    list.push(product);
-    groups.set(product.productGroup, list);
-  }
+  const groups = useMemo(() => groupByProductGroup(visible), [visible]);
 
   return (
     <div className="grid gap-6">
@@ -75,9 +71,9 @@ export function ProductsPage() {
       {catalog && catalog.length > 0 && visible.length === 0 ? (
         <EmptyBlock title="No products match" body="Try a different name, group, or description." />
       ) : null}
-      {[...groups.entries()].map(([group, items]) => (
-        <section key={group} className="grid gap-3">
-          <h2 className="font-heading text-2xl">{group}</h2>
+      {groups.map(({ group, items }) => (
+        <section key={group || "ungrouped"} className="grid gap-3">
+          {group ? <h2 className="font-heading text-2xl">{group}</h2> : null}
           <ul className="grid gap-3 md:grid-cols-2">
             {items.map((product) => (
               <li key={product.id}>

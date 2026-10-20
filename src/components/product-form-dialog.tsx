@@ -91,7 +91,8 @@ function ProductFormFields({
         <DialogHeader>
           <DialogTitle>{initial ? "Edit product" : "Add a product"}</DialogTitle>
           <DialogDescription>
-            This is the studio catalog. Retail price is the usual ticket; a store can sell it for something else.
+            This is the studio catalog. Product group is Shopify’s product type when the piece comes from Shopify.
+            Retail price is the usual ticket; a store can sell it for something else.
           </DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={(event) => void submit(event)}>

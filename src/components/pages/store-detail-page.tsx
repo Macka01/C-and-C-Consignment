@@ -19,6 +19,7 @@ import { ShopifyMatchNote, ShopifyStockNote } from "@/components/shopify-qty";
 import { ProductPhoto } from "@/components/product-photo";
 import { StockListingCounts, StockOnHandBox } from "@/components/stock-summary";
 import { api } from "@/lib/api-client";
+import { groupByProductGroup } from "@/lib/product-groups";
 import { matchesStockSearch } from "@/lib/stock-search";
 import { useResource } from "@/lib/use-resource";
 import { commissionLabel, formatMoney, rentLabel } from "@/lib/format";
@@ -40,6 +41,7 @@ export function StoreDetailPage() {
     () => (stock ?? []).filter((line) => matchesStockSearch(line, stockQuery)),
     [stock, stockQuery],
   );
+  const stockGroups = useMemo(() => groupByProductGroup(visibleStock), [visibleStock]);
 
   return (
     <div className="grid gap-6">
@@ -123,11 +125,16 @@ export function StoreDetailPage() {
                       body="Try a different name, group, or consignee code."
                     />
                   ) : (
-                    <ul className="grid gap-3">
-                      {visibleStock.map((line) => (
-                        <StockRow key={`${line.id}:${line.consigneeCode}`} line={line} />
-                      ))}
-                    </ul>
+                    stockGroups.map(({ group, items }) => (
+                      <section key={group || "ungrouped"} className="grid gap-3">
+                        {group ? <h2 className="font-heading text-2xl">{group}</h2> : null}
+                        <ul className="grid gap-3">
+                          {items.map((line) => (
+                            <StockRow key={`${line.id}:${line.consigneeCode}`} line={line} />
+                          ))}
+                        </ul>
+                      </section>
+                    ))
                   )}
                 </>
               )}
@@ -192,7 +199,6 @@ function StockRow({ line }: { line: StockLine }) {
             <span className="text-muted-foreground">Consignee code </span>
             {line.consigneeCode}
           </p>
-          {line.productGroup ? <p className="text-sm text-muted-foreground">{line.productGroup}</p> : null}
           <StockListingCounts line={line} />
           <ShopifyMatchNote line={line} className="text-xs text-muted-foreground" />
           <p className="text-sm text-primary">Open product</p>

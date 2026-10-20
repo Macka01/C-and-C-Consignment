@@ -10,9 +10,11 @@ const LOGO_SIZE = 72;
 const BRAND_SIZE = 28;
 const TITLE_SIZE = 16;
 const META_SIZE = 11;
+const GROUP_SIZE = 10;
 const HEADER_SIZE = 8;
 const BODY_SIZE = 9;
 const LINE = 12;
+const GROUP_HEIGHT = 18;
 const CELL_PAD = 5;
 const INK = rgb(0.16, 0.12, 0.1);
 const MUTED = rgb(0.42, 0.36, 0.32);
@@ -175,7 +177,7 @@ export async function buildStockListingPdf(listing: StockListing) {
     y -= 16;
   }
 
-  for (const row of listing.rows) {
+  const drawRow = (row: StockListing["rows"][number]) => {
     const lines = rowLines(row, fonts.regular, BODY_SIZE);
     const height = Math.max(...lines.map((cell) => cell.length)) * LINE + CELL_PAD;
     if (y - height < MARGIN + 48) {
@@ -208,6 +210,34 @@ export async function buildStockListingPdf(listing: StockListing) {
       thickness: 0.4,
       color: RULE,
     });
+  };
+
+  const drawGroup = (group: string) => {
+    if (y - GROUP_HEIGHT < MARGIN + 48) {
+      page = addPage();
+      y = PAGE.height - MARGIN;
+      paintHeader();
+    }
+    page.drawRectangle({
+      x: tableLeft,
+      y: y - GROUP_HEIGHT + 4,
+      width: contentWidth,
+      height: GROUP_HEIGHT,
+      color: HEADER_FILL,
+    });
+    drawText(page, group, tableLeft + CELL_PAD, y - GROUP_HEIGHT + 8, fonts.bold, GROUP_SIZE);
+    y -= GROUP_HEIGHT;
+    page.drawLine({
+      start: { x: tableLeft, y },
+      end: { x: tableLeft + contentWidth, y },
+      thickness: 0.6,
+      color: RULE,
+    });
+  };
+
+  for (const section of listing.groups) {
+    if (section.group) drawGroup(section.group);
+    for (const row of section.rows) drawRow(row);
   }
 
   if (y < MARGIN + 36) {

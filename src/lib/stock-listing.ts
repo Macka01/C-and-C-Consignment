@@ -3,6 +3,7 @@ import type { StockLine } from "@/lib/types";
 export const STOCK_LISTING_TITLE = "Consignment Stock Listing";
 
 export type StockListingRow = {
+  productGroup: string;
   productName: string;
   description: string;
   consigneeCode: string;
@@ -10,11 +11,17 @@ export type StockListingRow = {
   quantityOnHand: number;
 };
 
+export type StockListingGroup = {
+  group: string;
+  rows: StockListingRow[];
+};
+
 export type StockListing = {
   title: string;
   storeName: string;
   reportDate: string;
   reportDateIso: string;
+  groups: StockListingGroup[];
   rows: StockListingRow[];
   totalQuantity: number;
 };
@@ -136,20 +143,38 @@ export function buildStockListing(
   reportDateIso: string,
   stock: StockLine[],
 ): StockListing {
-  const rows = [...stock]
-    .map((line) => ({
-      productName: pdfSafeText(line.productName),
-      description: pdfSafeText(firstSentence(line.description)),
-      consigneeCode: pdfSafeText(line.consigneeCode),
-      price: line.retailPrice,
-      quantityOnHand: line.shopifyQtyOnHand ?? line.quantity,
-    }))
-    .sort((a, b) => a.productName.localeCompare(b.productName, "en", { sensitivity: "base" }));
+  const mapped = [...stock].map((line) => ({
+    productGroup: pdfSafeText(line.productGroup),
+    productName: pdfSafeText(line.productName),
+    description: pdfSafeText(firstSentence(line.description)),
+    consigneeCode: pdfSafeText(line.consigneeCode),
+    price: line.retailPrice,
+    quantityOnHand: line.shopifyQtyOnHand ?? line.quantity,
+  }));
+  const grouped = new Map<string, StockListingRow[]>();
+  for (const row of mapped) {
+    const group = row.productGroup.trim();
+    const list = grouped.get(group) ?? [];
+    list.push(row);
+    grouped.set(group, list);
+  }
+  const groups = [...grouped.entries()]
+    .sort(([left], [right]) => {
+      if (!left && right) return 1;
+      if (left && !right) return -1;
+      return left.localeCompare(right, "en", { sensitivity: "base" });
+    })
+    .map(([group, items]) => ({
+      group,
+      rows: items.sort((a, b) => a.productName.localeCompare(b.productName, "en", { sensitivity: "base" })),
+    }));
+  const rows = groups.flatMap((section) => section.rows);
   return {
     title: STOCK_LISTING_TITLE,
     storeName: pdfSafeText(storeName),
     reportDateIso,
     reportDate: displayDate(reportDateIso),
+    groups,
     rows,
     totalQuantity: rows.reduce((sum, row) => sum + row.quantityOnHand, 0),
   };

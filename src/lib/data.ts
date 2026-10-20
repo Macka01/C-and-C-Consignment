@@ -5,7 +5,7 @@ import os from "node:os";
 import { getDb, dataDir, reportsDir, usesExternalDataDir } from "@/lib/db";
 import { publicProductImageUrl } from "@/lib/shopify-product-image";
 import { HttpError } from "@/lib/errors";
-import { keepConsigneeCode, shopifyCatalogName, stripShopifyDefaultTitle } from "@/lib/shopify-match";
+import { keepConsigneeCode, shopifyCatalogName, shopifyProductGroup, stripShopifyDefaultTitle } from "@/lib/shopify-match";
 import { attachStockTotals } from "@/lib/stock-totals";
 import type {
   Dashboard,
@@ -655,6 +655,7 @@ export function ensureShopifyProduct(ref: {
   const existing = findProductIdForShopify({ ...ref, name });
   if (existing) {
     const db = getDb();
+    const now = new Date().toISOString();
     if (ref.variantId) {
       db.prepare(`UPDATE products SET shopify_variant_id = COALESCE(shopify_variant_id, ?) WHERE id = ?`).run(
         ref.variantId,
@@ -664,14 +665,18 @@ export function ensureShopifyProduct(ref: {
     if (name) {
       const current = db.prepare(`SELECT name FROM products WHERE id = ?`).get(existing) as { name: string } | undefined;
       if (current && !shopifyCatalogName(current.name)) {
-        db.prepare(`UPDATE products SET name = ?, updated_at = ? WHERE id = ?`).run(name, new Date().toISOString(), existing);
+        db.prepare(`UPDATE products SET name = ?, updated_at = ? WHERE id = ?`).run(name, now, existing);
       }
+    }
+    const productGroup = shopifyProductGroup(ref.productGroup);
+    if (productGroup) {
+      db.prepare(`UPDATE products SET product_group = ?, updated_at = ? WHERE id = ?`).run(productGroup, now, existing);
     }
     return { id: existing, created: false };
   }
   if (!name) return null;
   const created = createProduct({
-    productGroup: ref.productGroup || "Shopify",
+    productGroup: shopifyProductGroup(ref.productGroup),
     name,
     description: ref.description,
     retailPrice: ref.retailPrice,

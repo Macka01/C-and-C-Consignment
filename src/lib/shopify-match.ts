@@ -92,6 +92,11 @@ export function catalogImageJobs(
   return jobs;
 }
 
+/** Tracker product group is Shopify's product type. Empty type keeps a local group later. */
+export function shopifyProductGroup(productType: string | null | undefined) {
+  return productType?.trim() ?? "";
+}
+
 export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRef {
   return {
     variantId: item.variantId,
@@ -104,7 +109,7 @@ export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRe
       }),
       item.sku,
     ),
-    productGroup: item.productType?.trim() || "Shopify",
+    productGroup: shopifyProductGroup(item.productType),
     description: item.description?.trim() || "",
     retailPrice: item.price ?? 0,
     imageUrl: item.imageUrl ?? null,

@@ -8,6 +8,7 @@ import {
   productRefFromItem,
   keepConsigneeCode,
   shopifyCatalogName,
+  shopifyProductGroup,
   shopifyProductName,
   stripShopifyDefaultTitle,
   shelfBelongsAtStore,
@@ -84,6 +85,41 @@ describe("shopify inventory match", () => {
         onHand: 2,
       }).name,
       "Handmade Ceramic Trinket Dish",
+    );
+    assert.equal(
+      productRefFromItem({
+        variantId: "gid://shopify/ProductVariant/9",
+        sku: "TRINKET",
+        title: "Handmade Ceramic Trinket Dish",
+        variantTitle: "Default Title",
+        displayName: "Handmade Ceramic Trinket Dish - Default Title",
+        productType: "Bowl",
+        description: null,
+        price: 14,
+        onHand: 2,
+      }).productGroup,
+      "Bowl",
+    );
+  });
+
+  it("uses Shopify product type as the tracker group, and leaves it empty when type is blank", () => {
+    assert.equal(shopifyProductGroup("Tableware - Flax"), "Tableware - Flax");
+    assert.equal(shopifyProductGroup("  Handmade  "), "Handmade");
+    assert.equal(shopifyProductGroup(""), "");
+    assert.equal(shopifyProductGroup(null), "");
+    assert.equal(
+      productRefFromItem({
+        variantId: "gid://shopify/ProductVariant/10",
+        sku: "VASE",
+        title: "Window Vase",
+        variantTitle: null,
+        displayName: "Window Vase",
+        productType: null,
+        description: null,
+        price: 42,
+        onHand: 1,
+      }).productGroup,
+      "",
     );
   });
 

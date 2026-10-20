@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -129,14 +129,31 @@ export function StockListingPage() {
                 </tr>
               </thead>
               <tbody>
-                {listing.rows.map((row, index) => (
-                  <tr key={`${row.productName}-${row.consigneeCode}-${index}`} className="border-b border-border/80 align-top">
-                    <td className="px-2 py-2">{row.productName}</td>
-                    <td className="px-2 py-2">{row.description}</td>
-                    <td className="px-2 py-2">{row.consigneeCode}</td>
-                    <td className="px-2 py-2 text-right">{formatMoney(row.price)}</td>
-                    <td className="px-2 py-2 text-right">{row.quantityOnHand}</td>
-                  </tr>
+                {listing.groups.map((section, sectionIndex) => (
+                  <Fragment key={`${section.group}-${sectionIndex}`}>
+                    {section.group ? (
+                      <tr>
+                        <th
+                          colSpan={5}
+                          className="bg-muted/60 px-2 py-2 text-left font-heading text-base font-medium"
+                        >
+                          {section.group}
+                        </th>
+                      </tr>
+                    ) : null}
+                    {section.rows.map((row, index) => (
+                      <tr
+                        key={`${row.productName}-${row.consigneeCode}-${index}`}
+                        className="border-b border-border/80 align-top"
+                      >
+                        <td className="px-2 py-2">{row.productName}</td>
+                        <td className="px-2 py-2">{row.description}</td>
+                        <td className="px-2 py-2">{row.consigneeCode}</td>
+                        <td className="px-2 py-2 text-right">{formatMoney(row.price)}</td>
+                        <td className="px-2 py-2 text-right">{row.quantityOnHand}</td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
               <tfoot>
