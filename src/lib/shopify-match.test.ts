@@ -179,7 +179,7 @@ describe("shopify inventory match", () => {
     assert.equal(staysOnMatchedShelf(4, 0), true);
   });
 
-  it("does not treat a zero Shopify inventory level as stock", () => {
+  it("does not treat a leftover qty-0 store_stock row as stock", () => {
     const base = {
       quantity: 0,
       shopifyQtyOnHand: null as number | null,
@@ -188,14 +188,12 @@ describe("shopify inventory match", () => {
       transferredOut: 0,
       sales: 0,
     };
-    assert.equal(stockLineOnShelf({ ...base, shopifyQtyOnHand: 6 }), true);
-    assert.equal(stockLineOnShelf({ ...base, shopifyQtyOnHand: 0 }), false);
-    // Love Local leftovers: Shopify listed qty 0 at the location. That is not stock.
-    assert.equal(stockLineOnShelf({ ...base, quantity: 40, shopifyQtyOnHand: 0 }), false);
-    assert.equal(stockLineOnShelf({ ...base, quantity: 12, shopifyQtyOnHand: 0 }), false);
-    assert.equal(stockLineOnShelf({ ...base, shopifyQtyOnHand: 0, sales: 1 }), true);
-    assert.equal(stockLineOnShelf({ ...base, quantity: 9, shopifyMatch: "no_product" }), false);
-    assert.equal(stockLineOnShelf({ ...base, quantity: 9, shopifyMatch: "no_product", transferredIn: 4 }), true);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 3 }), true);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyQtyOnHand: 0 }), false);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyQtyOnHand: 6 }), false);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 0, sales: 1 }), true);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyMatch: "no_product" }), false);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyMatch: "no_product", transferredIn: 4 }), true);
     assert.equal(stockLineOnShelf({ ...base, quantity: 3, shopifyMatch: "unavailable" }), true);
     assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyMatch: "unavailable" }), false);
   });

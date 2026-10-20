@@ -687,6 +687,6 @@ export async function withShopifyStock<T extends StoreDetail | ProductDetail>(
     shopify: { configured: shopifyConfigured(), error, warning },
     stock: detail.stock
       .map((line) => attachLine(line, feed?.locations ?? null))
-      .filter((line) => stockLineOnShelf(line)), // qty > 0 or a sale/transfer; inventory level 0 is not stock
+      .filter((line) => stockLineOnShelf(line)), // store_stock.quantity > 0 or a sale/transfer; leftover qty-0 rows stay off
   };
 }

@@ -3,7 +3,7 @@ import { withShopifyStock } from "@/lib/shopify-inventory";
 import type { ShopifySyncOptions } from "@/lib/shopify-refresh";
 import { buildStockListing, calendarDateInSydney, type StockListing } from "@/lib/stock-listing";
 
-/** Same store stock the Stock tab uses: on-hand or a prior sale/transfer at that location. */
+/** Same store stock the Stock tab uses: store_stock.quantity > 0 or a sale/transfer at that store. */
 export async function loadStoreStockForListing(storeId: number, options?: ShopifySyncOptions) {
   return withShopifyStock(() => getStoreDetail(storeId), options);
 }

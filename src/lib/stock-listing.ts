@@ -1,4 +1,4 @@
-import { stockLineOnShelf } from "@/lib/shopify-match";
+import { belongsOnStoreShelf } from "@/lib/shelf-membership";
 import type { StockLine } from "@/lib/types";
 
 export const STOCK_LISTING_TITLE = "Consignment Stock Listing";
@@ -151,7 +151,11 @@ export function buildStockListing(
   stock: StockLine[],
 ): StockListing {
   const mapped = stock
-    .filter((line) => stockLineOnShelf(line) && pdfSafeText(line.productName).trim())
+    .filter(
+      (line) =>
+        belongsOnStoreShelf(line.quantity, line.transferredIn + line.transferredOut + line.sales) &&
+        pdfSafeText(line.productName).trim(),
+    )
     .map((line) => ({
       productGroup: pdfSafeText(line.productGroup),
       productName: pdfSafeText(line.productName),

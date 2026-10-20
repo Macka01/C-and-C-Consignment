@@ -1,3 +1,5 @@
+import { belongsOnStoreShelf } from "@/lib/shelf-membership";
+
 export type ShopifyMatch = "matched" | "no_location" | "no_product" | "unavailable";
 
 export type ShopifyInventoryItem = {
@@ -173,7 +175,7 @@ export function onHandCount(value: number) {
 
 /** Original rule: qty > 0 at this store, or a sale/transfer already happened there. */
 export function shelfBelongsAtStore(quantity: number, shopifyMovementCount: number) {
-  return onHandCount(quantity) > 0 || shopifyMovementCount > 0;
+  return belongsOnStoreShelf(quantity, shopifyMovementCount);
 }
 
 /**
@@ -189,7 +191,7 @@ export function shelfMovementCount(line: { transferredIn: number; transferredOut
   return line.transferredIn + line.transferredOut + line.sales;
 }
 
-/** Stock tab, listing page, and PDF: the original shelfBelongsAtStore rule. */
+/** Stock tab, listing page, and PDF: store_stock.quantity > 0, or a sale/transfer there. */
 export function stockLineOnShelf(line: {
   quantity: number;
   shopifyQtyOnHand: number | null;
@@ -198,16 +200,7 @@ export function stockLineOnShelf(line: {
   transferredOut: number;
   sales: number;
 }) {
-  const movements = shelfMovementCount(line);
-  // A numeric Shopify on-hand includes 0. Do not treat that empty inventory level as stock,
-  // and do not fall back to leftover local quantity.
-  if (typeof line.shopifyQtyOnHand === "number") {
-    return shelfBelongsAtStore(line.shopifyQtyOnHand, movements);
-  }
-  if (line.shopifyMatch === "no_product") {
-    return shelfBelongsAtStore(0, movements);
-  }
-  return shelfBelongsAtStore(line.quantity, movements);
+  return belongsOnStoreShelf(line.quantity, shelfMovementCount(line));
 }
 
 export function compareStockToShopify(

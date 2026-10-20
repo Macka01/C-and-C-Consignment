@@ -7,6 +7,7 @@ import {
   listStores,
   rememberShopifyLocation,
   removeShelf,
+  purgeUnstockedShelves,
   shopifyMovementCountAtStore,
   shopifyMovementProductIds,
   storeShelfProductIds,
@@ -126,6 +127,8 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
   for (const job of catalogImageJobs(feed.locations, findProductIdForShopify)) {
     rememberImage(job.productId, job.url);
   }
+
+  purgeUnstockedShelves();
 
   return { createdProducts, movements, storesMatched, images };
 }

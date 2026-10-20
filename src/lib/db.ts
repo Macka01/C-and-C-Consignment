@@ -364,6 +364,12 @@ function seedIfNeeded(db: Database.Database) {
   }
 }
 
+export function resetDb() {
+  const open = globalForDb.consignmentDb;
+  globalForDb.consignmentDb = undefined;
+  open?.close();
+}
+
 export function getDb() {
   if (!globalForDb.consignmentDb) {
     const dir = dataDir();

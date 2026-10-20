@@ -6,6 +6,7 @@ import { getDb, dataDir, reportsDir, usesExternalDataDir } from "@/lib/db";
 import { publicProductImageUrl } from "@/lib/shopify-product-image";
 import { HttpError } from "@/lib/errors";
 import { keepConsigneeCode, shopifyCatalogName, shopifyProductGroup, stripShopifyDefaultTitle } from "@/lib/shopify-match";
+import { BELONGS_ON_STORE_SHELF_SQL, DELETE_UNSTOCKED_SHELF_SQL } from "@/lib/shelf-membership";
 import { attachStockTotals } from "@/lib/stock-totals";
 import type {
   Dashboard,
@@ -197,19 +198,14 @@ function mapReport(row: ReportRow): ReportRecord {
   };
 }
 
-const stockedShelf = `
-  st.quantity > 0 OR EXISTS (
-    SELECT 1 FROM movements m
-    WHERE m.store_id = st.store_id AND m.product_id = st.product_id AND m.shopify_gid IS NOT NULL
-  )
-`;
+const stockedShelf = BELONGS_ON_STORE_SHELF_SQL;
 
 const storeSelect = `
   SELECT s.id, s.name, s.address, s.phone, s.contact_name, s.rent_amount, s.commission_rate,
          COALESCE(SUM(st.quantity), 0) AS units,
          COALESCE(SUM(st.quantity * p.retail_price), 0) AS retail_value
   FROM stores s
-  LEFT JOIN store_stock st ON st.store_id = s.id
+  LEFT JOIN store_stock st ON st.store_id = s.id AND (${stockedShelf})
   LEFT JOIN products p ON p.id = st.product_id
 `;
 
@@ -468,7 +464,13 @@ export function deleteProduct(id: number) {
   db.prepare(`DELETE FROM products WHERE id = ?`).run(id);
 }
 
+export function purgeUnstockedShelves() {
+  getDb().prepare(DELETE_UNSTOCKED_SHELF_SQL).run();
+}
+
+/** Stock tab, listing page, and PDF: qty > 0 at this store, or a sale/transfer there. */
 export function listStock(storeId: number): StockLine[] {
+  purgeUnstockedShelves();
   const rows = getDb()
     .prepare(`
       SELECT st.id, st.store_id, st.product_id, st.consignee_code, st.quantity,
@@ -485,6 +487,7 @@ export function listStock(storeId: number): StockLine[] {
 }
 
 export function listStockForProduct(productId: number): StockLine[] {
+  purgeUnstockedShelves();
   const rows = getDb()
     .prepare(`
       SELECT st.id, st.store_id, st.product_id, st.consignee_code, st.quantity,

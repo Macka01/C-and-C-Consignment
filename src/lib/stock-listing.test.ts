@@ -122,7 +122,7 @@ describe("consignment stock listing", () => {
         productName: "Flax Mug - Duck Egg",
         productGroup: "Tableware - Flax",
         consigneeCode: "",
-        quantity: 12,
+        quantity: 0,
         shopifyQtyOnHand: 0,
         shopifyMatch: "matched",
       }),
