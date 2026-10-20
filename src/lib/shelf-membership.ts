@@ -17,11 +17,20 @@ export const BELONGS_ON_STORE_SHELF_SQL = `
   )
 `;
 
+/**
+ * Leftover cleanup only. A saved consignee code means the product was in that shop.
+ * Listing membership is still qty > 0 or a sale/transfer — not “has a code”.
+ */
+export const UNSTOCKED_SHELF_PREDICATE_SQL = `
+  (quantity IS NULL OR quantity = 0)
+  AND TRIM(COALESCE(consignee_code, '')) = ''
+  AND NOT EXISTS (
+    SELECT 1 FROM movements m
+    WHERE m.store_id = store_stock.store_id AND m.product_id = store_stock.product_id
+  )
+`;
+
 export const DELETE_UNSTOCKED_SHELF_SQL = `
   DELETE FROM store_stock
-  WHERE quantity <= 0
-    AND NOT EXISTS (
-      SELECT 1 FROM movements m
-      WHERE m.store_id = store_stock.store_id AND m.product_id = store_stock.product_id
-    )
+  WHERE ${UNSTOCKED_SHELF_PREDICATE_SQL}
 `;

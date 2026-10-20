@@ -98,9 +98,13 @@ describe("store shelf membership SQL", () => {
     assert.ok(!rows.some((row) => /Christmas Bell|Flax Mug|Honey Pot/.test(row.product_name)));
   });
 
-  it("deletes leftover qty-0 rows that have no movements", () => {
+  it("deletes leftover qty-0 rows that have no code and no movements", () => {
     const db = new Database(":memory:");
     seedLoveLocalLeftovers(db);
+    db.prepare(`INSERT INTO products (id, product_group, name) VALUES (6, 'Bowl', 'Uncoded trinket still on the shelf')`).run();
+    db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (1, 6, '', 2)`).run();
+    db.prepare(`INSERT INTO products (id, product_group, name) VALUES (7, 'Bowl', 'Coded dish now at zero')`).run();
+    db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (1, 7, '4220', 0)`).run();
     db.exec(DELETE_UNSTOCKED_SHELF_SQL);
     const leftover = db
       .prepare(
@@ -109,7 +113,12 @@ describe("store shelf membership SQL", () => {
       .all() as Array<{ name: string }>;
     assert.deepEqual(
       leftover.map((row) => row.name),
-      ["Handmade Ceramic Gift Tag - thank you", "Handmade Ceramic Trinket Dish - Hearts - Sage"],
+      [
+        "Coded dish now at zero",
+        "Handmade Ceramic Gift Tag - thank you",
+        "Handmade Ceramic Trinket Dish - Hearts - Sage",
+        "Uncoded trinket still on the shelf",
+      ],
     );
   });
 });
