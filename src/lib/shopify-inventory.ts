@@ -10,6 +10,7 @@ import {
   stockLineOnShelf,
   type ShopifyLocationInventory,
 } from "@/lib/shopify-match";
+import { collectShopifyImageUrls } from "@/lib/shopify-product-image";
 import {
   eventsSinceMs,
   lastShopifyCopy,
@@ -21,8 +22,8 @@ import {
   SHOPIFY_PULL_TIMEOUT_MS,
   type ShopifySyncOptions,
 } from "@/lib/shopify-refresh";
-import { listShopifyProductsMissingImages } from "@/lib/data";
-import { cacheShopifyProductImages } from "@/lib/shopify-image-cache";
+import { listShopifyCatalogVariants, listShopifyProductsMissingImages } from "@/lib/data";
+import { cacheShopifyProductImages, type ProductImageJob } from "@/lib/shopify-image-cache";
 import { applyShopifyFeed, type ShopifyFeed } from "@/lib/shopify-sync";
 import type { ShopifyOrderLine, ShopifyTransferLine } from "@/lib/shopify-match";
 import type { ShopifyActivity } from "@/lib/shopify-status";
@@ -245,27 +246,59 @@ const VARIANT_IMAGES_QUERY = `
       id
       ... on ProductVariant {
         image { url }
-        product { featuredImage { url } }
+        product {
+          featuredImage { url }
+          media(first: 50) {
+            nodes {
+              ... on MediaImage { image { url } }
+            }
+          }
+        }
       }
     }
   }
 `;
 
-/** Photos for catalog rows the inventory feed did not mention, including shelves now at zero. */
-async function fetchMissingVariantImages(productIdsAlreadyQueued: Set<number>) {
-  const missing = listShopifyProductsMissingImages().filter((row) => !productIdsAlreadyQueued.has(row.id));
-  const jobs: Array<{ productId: number; url: string }> = [];
-  for (let index = 0; index < missing.length; index += 100) {
-    const batch = missing.slice(index, index + 100);
-    const data = await shopifyGraphql<{
-      nodes: Array<{ id?: string | null; image?: GraphqlImage; product?: { featuredImage?: GraphqlImage } | null } | null>;
-    }>(VARIANT_IMAGES_QUERY, { ids: batch.map((row) => row.variantId) });
+type VariantGalleryNode = {
+  id?: string | null;
+  image?: GraphqlImage;
+  product?: {
+    featuredImage?: GraphqlImage;
+    media?: { nodes?: Array<{ image?: GraphqlImage } | null> | null } | null;
+  } | null;
+};
+
+function galleryUrlsFromVariant(node: VariantGalleryNode) {
+  return collectShopifyImageUrls([
+    node.image?.url,
+    node.product?.featuredImage?.url,
+    ...(node.product?.media?.nodes ?? []).map((media) => media?.image?.url),
+  ]);
+}
+
+/** All Shopify photos for catalog variants: variant image, product gallery, and media. */
+async function fetchProductGalleries(thumbProductIds: Set<number>) {
+  const rows = listShopifyCatalogVariants();
+  const missingThumbs = new Set(listShopifyProductsMissingImages().map((row) => row.id));
+  const jobs: Array<{ productId: number; url: string; kind: "thumb" | "gallery" }> = [];
+  for (let index = 0; index < rows.length; index += 100) {
+    const batch = rows.slice(index, index + 100);
+    const data = await shopifyGraphql<{ nodes: Array<VariantGalleryNode | null> }>(VARIANT_IMAGES_QUERY, {
+      ids: batch.map((row) => row.variantId),
+    });
     const byVariant = new Map(batch.map((row) => [row.variantId, row.id]));
     for (const node of data.nodes ?? []) {
       if (!node?.id) continue;
       const productId = byVariant.get(node.id);
-      const url = shopifyImageUrl(node);
-      if (productId && url) jobs.push({ productId, url });
+      if (!productId) continue;
+      const urls = galleryUrlsFromVariant(node);
+      for (const url of urls) {
+        jobs.push({ productId, url, kind: "gallery" });
+      }
+      const thumb = urls[0] ?? shopifyImageUrl(node);
+      if (thumb && !thumbProductIds.has(productId) && missingThumbs.has(productId)) {
+        jobs.push({ productId, url: thumb, kind: "thumb" });
+      }
     }
   }
   return jobs;
@@ -578,10 +611,10 @@ async function refreshFeed(key: string): Promise<FeedResult> {
     if (feed) {
       const applied = applyShopifyFeed(feed);
       state.savedCopy = true;
-      let images = applied.images;
+      let images: ProductImageJob[] = applied.images.map((job) => ({ ...job, kind: "thumb" as const }));
       if (!mockPath()) {
         try {
-          const extra = await fetchMissingVariantImages(new Set(images.map((job) => job.productId)));
+          const extra = await fetchProductGalleries(new Set(images.map((job) => job.productId)));
           images = [...images, ...extra];
         } catch {
           // Stock is already saved. The next pull tries the missing photos again.

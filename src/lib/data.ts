@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import os from "node:os";
 import { getDb, dataDir, reportsDir, usesExternalDataDir } from "@/lib/db";
-import { publicProductImageUrl } from "@/lib/shopify-product-image";
+import { isShowcaseImageFile, publicProductImageUrl, shopifyImageIdentity } from "@/lib/shopify-product-image";
 import { HttpError } from "@/lib/errors";
 import { keepConsigneeCode, shopifyCatalogName, shopifyProductGroup, stripShopifyDefaultTitle } from "@/lib/shopify-match";
 import { BELONGS_ON_STORE_SHELF_SQL, DELETE_UNSTOCKED_SHELF_SQL } from "@/lib/shelf-membership";
@@ -404,7 +404,7 @@ export function listProducts(): Product[] {
 function listCatalogShowcaseRows(): ShowcaseCatalogRow[] {
   const rows = getDb()
     .prepare(
-      `SELECT id, product_group, name, description, retail_price, image_name
+      `SELECT id, product_group, name, description, retail_price, image_url, image_name
        FROM products
        WHERE TRIM(name) != ''
        ORDER BY id`,
@@ -415,16 +415,47 @@ function listCatalogShowcaseRows(): ShowcaseCatalogRow[] {
     name: string;
     description: string;
     retail_price: number;
+    image_url: string | null;
     image_name: string | null;
   }>;
-  return rows.map((row) => ({
-    id: row.id,
-    productGroup: row.product_group,
-    name: stripShopifyDefaultTitle(row.name) || row.name,
-    description: row.description,
-    retailPrice: row.retail_price,
-    imageUrl: row.image_name ? publicProductImageUrl(row.id, row.image_name) : null,
-  }));
+  const photosByProduct = new Map<number, Array<{ url: string; identity: string }>>();
+  const photoRows = getDb()
+    .prepare(
+      `SELECT product_id, shopify_url, stored_name
+       FROM product_photos
+       ORDER BY product_id, sort_order, id`,
+    )
+    .all() as Array<{ product_id: number; shopify_url: string; stored_name: string }>;
+  for (const photo of photoRows) {
+    const identity = shopifyImageIdentity(photo.shopify_url) || photo.shopify_url;
+    const next = { url: publicProductImageUrl(photo.product_id, photo.stored_name), identity };
+    const list = photosByProduct.get(photo.product_id) ?? [];
+    const existing = list.findIndex((item) => item.identity === identity);
+    if (existing >= 0) {
+      if (isShowcaseImageFile(photo.stored_name)) list[existing] = next;
+    } else {
+      list.push(next);
+    }
+    photosByProduct.set(photo.product_id, list);
+  }
+  return rows.map((row) => {
+    const photos = photosByProduct.get(row.id) ?? [];
+    if (!photos.length && row.image_name) {
+      photos.push({
+        url: publicProductImageUrl(row.id, row.image_name),
+        identity: row.image_url || row.image_name,
+      });
+    }
+    return {
+      id: row.id,
+      productGroup: row.product_group,
+      name: stripShopifyDefaultTitle(row.name) || row.name,
+      description: row.description,
+      retailPrice: row.retail_price,
+      imageUrl: photos[0]?.url ?? (row.image_name ? publicProductImageUrl(row.id, row.image_name) : null),
+      photos,
+    };
+  });
 }
 
 export function getShowcase(productId: number): ProductShowcase | null {
@@ -490,9 +521,14 @@ export function deleteProduct(id: number) {
   if (used.n > 0) {
     throw new HttpError("This product is on a shelf or already has history. Edit it instead of deleting it.", 409);
   }
+  const photos = db
+    .prepare(`SELECT stored_name FROM product_photos WHERE product_id = ?`)
+    .all(id) as { stored_name: string }[];
   const image = getProductImageRecord(id);
-  if (image?.imageName) fs.rmSync(productImagePath(image.imageName), { force: true });
   db.prepare(`DELETE FROM products WHERE id = ?`).run(id);
+  const names = new Set(photos.map((photo) => photo.stored_name));
+  if (image?.imageName) names.add(image.imageName);
+  for (const name of names) fs.rmSync(productImagePath(name), { force: true });
 }
 
 export function purgeUnstockedShelves() {
@@ -730,6 +766,16 @@ export function listShopifyProductsMissingImages(): { id: number; variantId: str
     .all() as { id: number; variantId: string }[];
 }
 
+export function listShopifyCatalogVariants(): { id: number; variantId: string }[] {
+  return getDb()
+    .prepare(
+      `SELECT id, shopify_variant_id AS variantId
+       FROM products
+       WHERE shopify_variant_id IS NOT NULL AND TRIM(shopify_variant_id) != ''`,
+    )
+    .all() as { id: number; variantId: string }[];
+}
+
 export function getProductImageRecord(id: number): {
   shopifyUrl: string | null;
   imageName: string | null;
@@ -747,12 +793,63 @@ export function saveProductImage(id: number, shopifyUrl: string, storedName: str
   getDb()
     .prepare(`UPDATE products SET image_url = ?, image_name = ?, image_mime = ?, updated_at = ? WHERE id = ?`)
     .run(shopifyUrl, storedName, mime, new Date().toISOString(), id);
-  if (previous?.imageName && previous.imageName !== storedName) {
+  if (previous?.imageName && previous.imageName !== storedName && !productOwnsPhotoFile(id, previous.imageName)) {
     fs.rmSync(productImagePath(previous.imageName), { force: true });
   }
 }
 
-export function readProductImage(id: number): { bytes: Buffer; mime: string } | null {
+export function getProductPhotoByIdentity(productId: number, identity: string) {
+  return (
+    (getDb()
+      .prepare(`SELECT stored_name AS storedName, mime FROM product_photos WHERE product_id = ? AND shopify_url = ?`)
+      .get(productId, identity) as { storedName: string; mime: string } | undefined) ?? null
+  );
+}
+
+export function saveProductPhoto(productId: number, identity: string, storedName: string, mime: string) {
+  const db = getDb();
+  const previous = getProductPhotoByIdentity(productId, identity);
+  const maxOrder = db
+    .prepare(`SELECT COALESCE(MAX(sort_order), -1) AS n FROM product_photos WHERE product_id = ?`)
+    .get(productId) as { n: number };
+  db.prepare(
+    `INSERT INTO product_photos (product_id, shopify_url, stored_name, mime, sort_order)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(product_id, shopify_url) DO UPDATE SET
+       stored_name = excluded.stored_name,
+       mime = excluded.mime`,
+  ).run(productId, identity, storedName, mime, maxOrder.n + 1);
+  if (previous?.storedName && previous.storedName !== storedName) {
+    const stillUsed = productOwnsPhotoFile(productId, previous.storedName) || getProductImageRecord(productId)?.imageName === previous.storedName;
+    if (!stillUsed) fs.rmSync(productImagePath(previous.storedName), { force: true });
+  }
+}
+
+function productOwnsPhotoFile(productId: number, storedName: string) {
+  const row = getDb()
+    .prepare(`SELECT 1 AS ok FROM product_photos WHERE product_id = ? AND stored_name = ?`)
+    .get(productId, storedName) as { ok: number } | undefined;
+  return Boolean(row);
+}
+
+function safeImageFileName(value: string) {
+  const name = path.basename(value);
+  if (!name || name !== value || name.includes("..")) return null;
+  return name;
+}
+
+export function readProductImage(id: number, storedName?: string | null): { bytes: Buffer; mime: string } | null {
+  const wanted = storedName ? safeImageFileName(storedName) : null;
+  if (wanted) {
+    const primary = getProductImageRecord(id);
+    const gallery = getDb()
+      .prepare(`SELECT mime FROM product_photos WHERE product_id = ? AND stored_name = ?`)
+      .get(id, wanted) as { mime: string } | undefined;
+    if (!gallery && primary?.imageName !== wanted) return null;
+    const file = productImagePath(wanted);
+    if (!fs.existsSync(file)) return null;
+    return { bytes: fs.readFileSync(file), mime: gallery?.mime || primary?.imageMime || "image/jpeg" };
+  }
   const row = getProductImageRecord(id);
   if (!row?.imageName) return null;
   const file = productImagePath(row.imageName);

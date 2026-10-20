@@ -7,6 +7,7 @@ export type ShowcaseCatalogRow = {
   description: string;
   retailPrice: number;
   imageUrl: string | null;
+  photos?: Array<{ url: string; identity: string }>;
 };
 
 export type ShowcasePhoto = {
@@ -84,13 +85,23 @@ export function buildShowcase(productId: number, catalog: ShowcaseCatalogRow[]):
   const seen = new Set<string>();
   const ordered = [opened, ...family.filter((row) => row.id !== opened.id)];
   for (const row of ordered) {
-    if (!row.imageUrl || seen.has(row.imageUrl)) continue;
-    seen.add(row.imageUrl);
-    photos.push({
-      productId: row.id,
-      url: row.imageUrl,
-      alt: `${title}${showcaseVariantLabel(row.name) ? ` — ${showcaseVariantLabel(row.name)}` : ""}`,
-    });
+    const files = row.photos?.length
+      ? row.photos
+      : row.imageUrl
+        ? [{ url: row.imageUrl, identity: row.imageUrl }]
+        : [];
+    const label = showcaseVariantLabel(row.name);
+    for (const file of files) {
+      const key = file.identity || file.url;
+      if (!file.url || seen.has(key) || seen.has(file.url)) continue;
+      seen.add(key);
+      seen.add(file.url);
+      photos.push({
+        productId: row.id,
+        url: file.url,
+        alt: `${title}${label ? ` — ${label}` : ""}`,
+      });
+    }
   }
   return {
     id: canonical.id,

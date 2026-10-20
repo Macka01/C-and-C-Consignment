@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
-export const PRODUCT_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+export const PRODUCT_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const SHOPIFY_THUMB_IMAGE_WIDTH = 480;
+export const SHOPIFY_SHOWCASE_IMAGE_WIDTH = 2048;
 
 const mimeExtensions: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -23,9 +25,14 @@ export function shouldFetchProductImage(
   return true;
 }
 
-export function localProductImageName(productId: number, shopifyUrl: string, ext: string) {
+export function localProductImageName(
+  productId: number,
+  shopifyUrl: string,
+  ext: string,
+  kind: "thumb" | "gallery" = "thumb",
+) {
   const hash = createHash("sha1").update(shopifyUrl).digest("hex").slice(0, 10);
-  return `${productId}-${hash}.${ext}`;
+  return kind === "gallery" ? `${productId}-${hash}-lg.${ext}` : `${productId}-${hash}.${ext}`;
 }
 
 export function extensionForImageMime(mime: string, fallbackUrl: string) {
@@ -42,20 +49,69 @@ export function publicProductImageUrl(productId: number, storedName: string) {
   return `/api/products/${productId}/image?v=${encodeURIComponent(storedName)}`;
 }
 
-/** A listing thumbnail. Shopify’s CDN serves this size from the original photo URL. */
-export function shopifySizedImageUrl(url: string, width = 480) {
+const SHOPIFY_SIZE_SUFFIX = /_(?:pico|icon|thumb|small|compact|medium|large|grande|master|\d+x\d+)(?=\.[a-z0-9]+$)/i;
+
+function parseShopifyCdnUrl(url: string) {
   const remote = url.trim();
-  if (!remote) return "";
-  let parsed: URL;
+  if (!remote) return null;
   try {
-    parsed = new URL(remote);
+    const parsed = new URL(remote);
+    if (!/^https?:$/i.test(parsed.protocol)) return null;
+    return parsed;
   } catch {
-    return "";
+    return null;
   }
-  if (!/^https?:$/i.test(parsed.protocol)) return "";
+}
+
+function stripShopifySize(parsed: URL) {
+  parsed.pathname = parsed.pathname.replace(SHOPIFY_SIZE_SUFFIX, "");
+  parsed.searchParams.delete("width");
+  parsed.searchParams.delete("height");
+  parsed.searchParams.delete("crop");
+  return parsed;
+}
+
+/** Same photo with or without a width/height query or `_480x480` filename. */
+export function shopifyImageIdentity(url: string) {
+  const parsed = parseShopifyCdnUrl(url);
+  if (!parsed) return url.trim();
+  return stripShopifySize(parsed).toString();
+}
+
+export function collectShopifyImageUrls(urls: Array<string | null | undefined>) {
+  const collected: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of urls) {
+    const url = raw?.trim();
+    if (!url) continue;
+    const identity = shopifyImageIdentity(url);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    collected.push(url);
+  }
+  return collected;
+}
+
+/** A listing thumbnail. Shopify’s CDN serves this size from the original photo URL. */
+export function shopifySizedImageUrl(url: string, width = SHOPIFY_THUMB_IMAGE_WIDTH) {
+  const parsed = parseShopifyCdnUrl(url);
+  if (!parsed) return "";
   if (parsed.searchParams.has("width")) return parsed.toString();
   parsed.searchParams.set("width", String(width));
   return parsed.toString();
+}
+
+/** Fullscreen / iPad showcase. Asks Shopify for 2048px from the original, never the 480px thumb. */
+export function shopifyMasterImageUrl(url: string, width = SHOPIFY_SHOWCASE_IMAGE_WIDTH) {
+  const parsed = parseShopifyCdnUrl(url);
+  if (!parsed) return "";
+  stripShopifySize(parsed);
+  parsed.searchParams.set("width", String(width));
+  return parsed.toString();
+}
+
+export function isShowcaseImageFile(storedName: string | null | undefined) {
+  return Boolean(storedName && /-lg\./i.test(storedName));
 }
 
 export async function downloadShopifyImage(

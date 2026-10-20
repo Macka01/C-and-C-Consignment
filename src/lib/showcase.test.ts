@@ -85,4 +85,38 @@ describe("product showcase", () => {
     );
     assert.deepEqual(showcase?.photos, []);
   });
+
+  it("shows every distinct photo, not only the primary", () => {
+    const speckle = row({
+      id: 4,
+      name: "Everyday Bowl — Speckle Grey",
+      imageUrl: "/api/products/4/image?v=4-front-lg.jpg",
+      photos: [
+        { url: "/api/products/4/image?v=4-front-lg.jpg", identity: "https://cdn.shopify.com/bowl-front.jpg" },
+        { url: "/api/products/4/image?v=4-detail-lg.jpg", identity: "https://cdn.shopify.com/bowl-detail.jpg" },
+        { url: "/api/products/4/image?v=4-table-lg.jpg", identity: "https://cdn.shopify.com/bowl-table.jpg" },
+        { url: "/api/products/4/image?v=4-front-again.jpg", identity: "https://cdn.shopify.com/bowl-front.jpg" },
+      ],
+    });
+    const grit = row({
+      id: 5,
+      name: "Everyday Bowl — Grit Large",
+      retailPrice: 42,
+      imageUrl: "/api/products/5/image?v=5-grit-lg.jpg",
+      photos: [
+        { url: "/api/products/5/image?v=5-grit-lg.jpg", identity: "https://cdn.shopify.com/bowl-grit.jpg" },
+        { url: "/api/products/5/image?v=5-detail-lg.jpg", identity: "https://cdn.shopify.com/bowl-detail.jpg" },
+      ],
+    });
+    const showcase = buildShowcase(4, [speckle, grit]);
+    assert.deepEqual(
+      showcase?.photos.map((photo) => photo.url),
+      [
+        "/api/products/4/image?v=4-front-lg.jpg",
+        "/api/products/4/image?v=4-detail-lg.jpg",
+        "/api/products/4/image?v=4-table-lg.jpg",
+        "/api/products/5/image?v=5-grit-lg.jpg",
+      ],
+    );
+  });
 });

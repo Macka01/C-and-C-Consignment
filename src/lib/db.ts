@@ -164,6 +164,24 @@ function migrate(db: Database.Database) {
   column(db, "products", "image_mime", "image_mime TEXT");
   column(db, "movements", "shopify_gid", "shopify_gid TEXT");
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_movements_shopify_gid ON movements(shopify_gid) WHERE shopify_gid IS NOT NULL`);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS product_photos (
+      id INTEGER PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      shopify_url TEXT NOT NULL,
+      stored_name TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      UNIQUE (product_id, shopify_url)
+    );
+    CREATE INDEX IF NOT EXISTS idx_product_photos_product ON product_photos(product_id, sort_order);
+  `);
+  db.exec(`
+    INSERT OR IGNORE INTO product_photos (product_id, shopify_url, stored_name, mime, sort_order)
+    SELECT id, COALESCE(NULLIF(image_url, ''), image_name), image_name, COALESCE(image_mime, 'image/jpeg'), 0
+    FROM products
+    WHERE image_name IS NOT NULL AND TRIM(image_name) != ''
+  `);
 }
 
 type SeedMove = {

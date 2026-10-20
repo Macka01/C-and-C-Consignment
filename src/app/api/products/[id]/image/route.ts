@@ -2,11 +2,12 @@ import { readProductImage } from "@/lib/data";
 import { fail, live, type IdContext } from "@/lib/handlers";
 import { positiveId } from "@/lib/validate";
 
-export async function GET(_request: Request, ctx: IdContext) {
+export async function GET(request: Request, ctx: IdContext) {
   try {
     await live();
     const { id } = await ctx.params;
-    const file = readProductImage(positiveId(id, "Product"));
+    const storedName = new URL(request.url).searchParams.get("v");
+    const file = readProductImage(positiveId(id, "Product"), storedName);
     if (!file) {
       return new Response("Not found", { status: 404 });
     }
