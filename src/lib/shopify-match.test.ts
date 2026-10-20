@@ -144,6 +144,7 @@ describe("shopify inventory match", () => {
     assert.equal(matchStoreForShopifyEvent("Love Local", null), false);
     assert.equal(matchStoreForShopifyEvent("Love Local", "Local"), false);
     assert.equal(matchStoreForShopifyEvent("Love Local", "Harbour Linen"), false);
+    assert.equal(matchStoreForShopifyEvent("Love Local", "63 Ferndale St"), false);
     assert.equal(matchStoreForShopifyEvent("Love Local", "Love Local"), true);
   });
 

@@ -158,4 +158,53 @@ describe("shopify feed mapping", () => {
     ]);
     assert.deepEqual(events, []);
   });
+
+  it("keeps a Ferndale warehouse transfer off Love Local when the shop end is blank", () => {
+    const toWarehouse = movementsFromTransfers([
+      {
+        id: "xfer-out",
+        status: "TRANSFERRED",
+        occurredOn: "2026-10-08T00:00:00Z",
+        originName: "",
+        destinationName: "63 Ferndale St",
+        quantity: 1,
+        product: {
+          variantId: "gid://shopify/ProductVariant/3",
+          sku: "",
+          name: "Christmas Bell - Large",
+          productGroup: "Christmas Decorations",
+          description: "",
+          retailPrice: 18,
+          imageUrl: null,
+        },
+      },
+    ]);
+    const fromWarehouse = movementsFromTransfers([
+      {
+        id: "xfer-in",
+        status: "TRANSFERRED",
+        occurredOn: "2026-10-08T00:00:00Z",
+        originName: "63 Ferndale St",
+        destinationName: "",
+        quantity: 1,
+        product: {
+          variantId: "gid://shopify/ProductVariant/3",
+          sku: "",
+          name: "Christmas Bell - Large",
+          productGroup: "Christmas Decorations",
+          description: "",
+          retailPrice: 18,
+          imageUrl: null,
+        },
+      },
+    ]);
+    assert.deepEqual(
+      toWarehouse.map((event) => [event.type, event.locationName, event.notes]),
+      [["transfer_in", "63 Ferndale St", "Shopify transfer from unknown location"]],
+    );
+    assert.deepEqual(
+      fromWarehouse.map((event) => [event.type, event.locationName, event.notes]),
+      [["transfer_out", "63 Ferndale St", "Shopify transfer to unknown location"]],
+    );
+  });
 });
