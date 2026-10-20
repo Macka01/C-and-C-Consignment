@@ -2,10 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader, RefreshButton } from "@/components/feedback";
-import { ProductFormDialog } from "@/components/product-form-dialog";
 import { ProductPhoto } from "@/components/product-photo";
 import { groupByProductGroup } from "@/lib/product-groups";
 import { matchesProductSearch } from "@/lib/stock-search";
@@ -15,7 +13,6 @@ import type { Product } from "@/lib/types";
 
 export function ProductsPage() {
   const products = useResource<Product[]>("/api/products", { refreshMs: 15000, shopify: true });
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const catalog = products.data;
   const visible = useMemo(
@@ -29,27 +26,15 @@ export function ProductsPage() {
       <PageHeader
         eyebrow="Catalog"
         title="Products"
-        lede="The catalog. Shopify creates products when they appear at a consignee location. Quantity and sales come from Shopify."
-        action={
-          <>
-            <RefreshButton onClick={() => void products.reload({ fresh: true })} />
-            <Button className="h-10" onClick={() => setOpen(true)}>
-              Add a product
-            </Button>
-          </>
-        }
+        lede="The catalog comes from Shopify. Products appear when they are at a consignee location. Quantity and sales come from Shopify."
+        action={<RefreshButton onClick={() => void products.reload({ fresh: true })} />}
       />
       {products.loading && !products.data ? <LoadingBlock label="Retrieving Shopify data…" /> : null}
       {products.error && !products.data ? <ErrorBlock message={products.error} onRetry={() => void products.reload()} /> : null}
       {catalog && catalog.length === 0 ? (
         <EmptyBlock
           title="The catalog is empty"
-          body="Shopify creates products when they appear at a consignee location, or add one here."
-          action={
-            <Button className="h-10" onClick={() => setOpen(true)}>
-              Add a product
-            </Button>
-          }
+          body="Shopify creates products when they appear at a consignee location."
         />
       ) : null}
       {catalog && catalog.length > 0 ? (
@@ -93,7 +78,6 @@ export function ProductsPage() {
           </ul>
         </section>
       ))}
-      <ProductFormDialog open={open} onOpenChange={setOpen} onSaved={() => void products.reload()} />
     </div>
   );
 }

@@ -17,8 +17,6 @@ import { Field, FormError } from "@/components/fields";
 import { api } from "@/lib/api-client";
 import type { Product } from "@/lib/types";
 
-const empty = { productGroup: "", name: "", description: "", retailPrice: "" };
-
 export function ProductFormDialog({
   open,
   onOpenChange,
@@ -27,7 +25,7 @@ export function ProductFormDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initial?: Product | null;
+  initial: Product;
   onSaved: () => void;
 }) {
   return (
@@ -42,20 +40,16 @@ function ProductFormFields({
   onOpenChange,
   onSaved,
 }: {
-  initial?: Product | null;
+  initial: Product;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState(
-    initial
-      ? {
-          productGroup: initial.productGroup,
-          name: initial.name,
-          description: initial.description,
-          retailPrice: String(initial.retailPrice),
-        }
-      : empty,
-  );
+  const [form, setForm] = useState({
+    productGroup: initial.productGroup,
+    name: initial.name,
+    description: initial.description,
+    retailPrice: String(initial.retailPrice),
+  });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -70,13 +64,8 @@ function ProductFormFields({
       retailPrice: Number(form.retailPrice),
     };
     try {
-      if (initial) {
-        await api(`/api/products/${initial.id}`, { method: "PATCH", body: JSON.stringify(payload) });
-        toast.success("Product updated");
-      } else {
-        await api("/api/products", { method: "POST", body: JSON.stringify(payload) });
-        toast.success("Product added to the catalog");
-      }
+      await api(`/api/products/${initial.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      toast.success("Product updated");
       onOpenChange(false);
       onSaved();
     } catch (err) {
@@ -89,10 +78,10 @@ function ProductFormFields({
   return (
     <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{initial ? "Edit product" : "Add a product"}</DialogTitle>
+          <DialogTitle>Edit product</DialogTitle>
           <DialogDescription>
-            This is the studio catalog. Product group is Shopify’s product type when the piece comes from Shopify.
-            Retail price is the usual ticket; a store can sell it for something else.
+            Product group is Shopify’s product type. Retail price is the usual ticket; a store can sell it for something
+            else. New catalog rows come from Shopify, not from this form.
           </DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={(event) => void submit(event)}>
@@ -116,7 +105,7 @@ function ProductFormFields({
               Cancel
             </Button>
             <Button type="submit" className="h-10" disabled={pending}>
-              {pending ? "Saving…" : initial ? "Save changes" : "Add product"}
+              {pending ? "Saving…" : "Save changes"}
             </Button>
           </DialogFooter>
         </form>

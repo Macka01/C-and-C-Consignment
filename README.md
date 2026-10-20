@@ -78,7 +78,7 @@ Uploads accept JPEG, PNG, WEBP, HEIC, and PDF, up to 20 MB. Files stay on this s
 
 ## Shopify reporting
 
-Quantity, sales, and transfers come from Shopify. This app does not record shelf movements. A store name matches a Shopify location. A product is created if Shopify has it at that location and it is not in the catalog yet (name, price, product type, SKU). The catalog, store stock list, and Consignment Stock Listing group by Shopify product type. If type is empty, a local group is left as it is.
+Quantity, sales, and transfers come from Shopify. This app does not record shelf movements. A store name matches a Shopify location. A product is created if Shopify has it at that location and it is not in the catalog yet (name, price, product type, SKU). You cannot add a product in the tracker. The catalog, store stock list, and Consignment Stock Listing group by Shopify product type. If type is empty, a local group is left as it is.
 
 The Admin API token needs `read_inventory`, `read_locations`, `read_products`, `read_orders`, and `read_inventory_transfers`.
 

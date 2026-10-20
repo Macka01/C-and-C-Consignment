@@ -1,6 +1,6 @@
-import { createProduct, listProducts } from "@/lib/data";
-import { fail, json, live, readJson } from "@/lib/handlers";
-import { parseProduct } from "@/lib/parse";
+import { listProducts } from "@/lib/data";
+import { HttpError } from "@/lib/errors";
+import { fail, json, live } from "@/lib/handlers";
 import { syncFromShopify } from "@/lib/shopify-inventory";
 import { shopifySyncOptions } from "@/lib/shopify-refresh";
 
@@ -14,11 +14,6 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
-  try {
-    await live();
-    return json(createProduct(parseProduct(await readJson(request))), 201);
-  } catch (error) {
-    return fail(error);
-  }
+export async function POST() {
+  return fail(new HttpError("The catalog comes from Shopify. Add the product there.", 405));
 }
