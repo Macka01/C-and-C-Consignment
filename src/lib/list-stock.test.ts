@@ -98,6 +98,24 @@ describe("store shelf membership SQL", () => {
     assert.ok(!rows.some((row) => /Christmas Bell|Flax Mug|Honey Pot/.test(row.product_name)));
   });
 
+  it("keeps a genuine sold-out Love Local row that never got a consignee code", () => {
+    const db = new Database(":memory:");
+    seedLoveLocalLeftovers(db);
+    db.prepare(`INSERT INTO products (id, product_group, name) VALUES (8, 'Bowl', 'Uncoded dish transferred then sold out')`).run();
+    db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (1, 8, '', 0)`).run();
+    db.prepare(
+      `INSERT INTO movements (store_id, product_id, type, quantity, shopify_gid)
+       VALUES (1, 8, 'transfer_in', 3, 'gid://shopify/InventoryTransferLineItem/real-dish:in')`,
+    ).run();
+    const rows = listingSql(db, 1);
+    assert.ok(rows.some((row) => row.product_name === "Uncoded dish transferred then sold out" && row.consignee_code === "" && row.quantity === 0));
+    db.exec(DELETE_UNSTOCKED_SHELF_SQL);
+    const kept = db
+      .prepare(`SELECT p.name FROM store_stock st JOIN products p ON p.id = st.product_id WHERE st.product_id = 8`)
+      .get() as { name: string } | undefined;
+    assert.equal(kept?.name, "Uncoded dish transferred then sold out");
+  });
+
   it("lists leftover catalog rows once a bogus Love Local movement exists", () => {
     const db = new Database(":memory:");
     seedLoveLocalLeftovers(db);

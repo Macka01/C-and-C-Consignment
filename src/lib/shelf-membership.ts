@@ -18,8 +18,9 @@ export const BELONGS_ON_STORE_SHELF_SQL = `
 `;
 
 /**
- * Leftover cleanup only. A saved consignee code means the product was in that shop.
- * Listing membership is still qty > 0 or a sale/transfer — not “has a code”.
+ * Leftover cleanup only, after bogus empty-location movements are gone.
+ * Qty 0 with a blank code still stays if a real Love Local sale/transfer remains.
+ * Listing membership is qty > 0 or a sale/transfer — not “has a code”.
  */
 export const UNSTOCKED_SHELF_PREDICATE_SQL = `
   (quantity IS NULL OR quantity = 0)
