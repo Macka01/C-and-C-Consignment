@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { formatMoney } from "@/lib/format";
-import { pdfSafeText, wrapLines, type StockListing } from "@/lib/stock-listing";
+import { formatMoney } from "./format.ts";
+import { pdfSafeText, wrapLines, type StockListing } from "./stock-listing.ts";
 
 const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 42;
@@ -106,33 +106,7 @@ export async function buildStockListingPdf(listing: StockListing) {
   let page = addPage();
   let y = PAGE.height - MARGIN;
 
-  const paintHeader = () => {
-    if (logo) {
-      page.drawImage(logo, {
-        x: tableLeft,
-        y: y - LOGO_SIZE,
-        width: LOGO_SIZE,
-        height: LOGO_SIZE,
-      });
-      drawText(
-        page,
-        "Cotton & Clay",
-        tableLeft + LOGO_SIZE + 12,
-        y - LOGO_SIZE / 2 - BRAND_SIZE * 0.35,
-        fonts.bold,
-        BRAND_SIZE,
-      );
-      y -= LOGO_SIZE + 14;
-    } else {
-      drawText(page, "Cotton & Clay", tableLeft, y, fonts.bold, BRAND_SIZE);
-      y -= BRAND_SIZE + 10;
-    }
-    drawText(page, listing.title, tableLeft, y, fonts.bold, TITLE_SIZE);
-    y -= 20;
-    drawText(page, `Store: ${listing.storeName}`, tableLeft, y, fonts.regular, META_SIZE);
-    y -= 15;
-    drawText(page, `Date of report: ${listing.reportDate}`, tableLeft, y, fonts.regular, META_SIZE);
-    y -= 22;
+  const paintColumnHeadings = () => {
     page.drawRectangle({
       x: tableLeft,
       y: y - headerHeight + 4,
@@ -168,7 +142,43 @@ export async function buildStockListingPdf(listing: StockListing) {
     y -= 2;
   };
 
-  paintHeader();
+  const paintStamp = () => {
+    if (logo) {
+      page.drawImage(logo, {
+        x: tableLeft,
+        y: y - LOGO_SIZE,
+        width: LOGO_SIZE,
+        height: LOGO_SIZE,
+      });
+      drawText(
+        page,
+        "Cotton & Clay",
+        tableLeft + LOGO_SIZE + 12,
+        y - LOGO_SIZE / 2 - BRAND_SIZE * 0.35,
+        fonts.bold,
+        BRAND_SIZE,
+      );
+      y -= LOGO_SIZE + 14;
+    } else {
+      drawText(page, "Cotton & Clay", tableLeft, y, fonts.bold, BRAND_SIZE);
+      y -= BRAND_SIZE + 10;
+    }
+    drawText(page, listing.title, tableLeft, y, fonts.bold, TITLE_SIZE);
+    y -= 20;
+    drawText(page, `Store: ${listing.storeName}`, tableLeft, y, fonts.regular, META_SIZE);
+    y -= 15;
+    drawText(page, `Date of report: ${listing.reportDate}`, tableLeft, y, fonts.regular, META_SIZE);
+    y -= 22;
+  };
+
+  const startPage = (continued: boolean) => {
+    page = continued ? addPage() : page;
+    y = PAGE.height - MARGIN;
+    paintStamp();
+    paintColumnHeadings();
+  };
+
+  startPage(false);
 
   if (!listing.rows.length) {
     y -= 18;
@@ -180,9 +190,7 @@ export async function buildStockListingPdf(listing: StockListing) {
     const lines = rowLines(row, fonts.regular, BODY_SIZE);
     const height = Math.max(...lines.map((cell) => cell.length)) * LINE + CELL_PAD;
     if (y - height < MARGIN + 48) {
-      page = addPage();
-      y = PAGE.height - MARGIN;
-      paintHeader();
+      startPage(true);
     }
     let x = tableLeft;
     lines.forEach((cell, index) => {
@@ -213,9 +221,7 @@ export async function buildStockListingPdf(listing: StockListing) {
 
   const drawGroup = (group: string) => {
     if (y - GROUP_HEIGHT < MARGIN + 48) {
-      page = addPage();
-      y = PAGE.height - MARGIN;
-      paintHeader();
+      startPage(true);
     }
     page.drawRectangle({
       x: tableLeft,
@@ -240,9 +246,7 @@ export async function buildStockListingPdf(listing: StockListing) {
   }
 
   if (y < MARGIN + 36) {
-    page = addPage();
-    y = PAGE.height - MARGIN;
-    paintHeader();
+    startPage(true);
   }
   y -= 18;
   page.drawLine({

@@ -117,9 +117,9 @@ export function StockListingPage() {
             <br />
             Date of report: {listing.reportDate}
           </p>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
-              <thead>
+              <thead className="print:table-header-group">
                 <tr className="border-b border-border bg-muted/60">
                   <th className="px-2 py-2 font-medium">Product Name</th>
                   <th className="px-2 py-2 font-medium">Consignee Product Code</th>

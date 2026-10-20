@@ -143,4 +143,13 @@
     background: #fff !important;
     background-image: none !important;
   }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+  tr {
+    break-inside: avoid;
+  }
 }
