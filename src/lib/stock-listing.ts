@@ -141,17 +141,26 @@ function compareListingRows(a: StockListingRow, b: StockListingRow) {
   return a.productName.localeCompare(b.productName, "en", { sensitivity: "base" });
 }
 
+function listingQuantity(line: StockLine) {
+  return line.shopifyQtyOnHand ?? line.quantity;
+}
+
+/** On that store’s shelf, and currently in stock. Zero-qty history stays off the listing. */
+function stockLineOnListing(line: StockLine) {
+  return stockLineOnShelf(line) && listingQuantity(line) > 0;
+}
+
 export function buildStockListing(
   storeName: string,
   reportDateIso: string,
   stock: StockLine[],
 ): StockListing {
-  const mapped = stock.filter((line) => stockLineOnShelf(line)).map((line) => ({
+  const mapped = stock.filter((line) => stockLineOnListing(line)).map((line) => ({
     productGroup: pdfSafeText(line.productGroup),
     productName: pdfSafeText(line.productName),
     consigneeCode: pdfSafeText(line.consigneeCode),
     price: line.retailPrice,
-    quantityOnHand: line.shopifyQtyOnHand ?? line.quantity,
+    quantityOnHand: listingQuantity(line),
   }));
   const grouped = new Map<string, StockListingRow[]>();
   for (const row of mapped) {

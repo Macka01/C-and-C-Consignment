@@ -128,31 +128,39 @@ export function StockListingPage() {
                 </tr>
               </thead>
               <tbody>
-                {listing.groups.map((section, sectionIndex) => (
-                  <Fragment key={`${section.group}-${sectionIndex}`}>
-                    {section.group ? (
-                      <tr>
-                        <th
-                          colSpan={4}
-                          className="bg-muted/60 px-2 py-2 text-left font-heading text-base font-medium"
+                {listing.rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-2 py-3 text-muted-foreground">
+                      No stock on hand at this store.
+                    </td>
+                  </tr>
+                ) : (
+                  listing.groups.map((section, sectionIndex) => (
+                    <Fragment key={`${section.group}-${sectionIndex}`}>
+                      {section.group ? (
+                        <tr>
+                          <th
+                            colSpan={4}
+                            className="bg-muted/60 px-2 py-2 text-left font-heading text-base font-medium"
+                          >
+                            {section.group}
+                          </th>
+                        </tr>
+                      ) : null}
+                      {section.rows.map((row, index) => (
+                        <tr
+                          key={`${row.productName}-${row.consigneeCode}-${index}`}
+                          className="border-b border-border/80 align-top"
                         >
-                          {section.group}
-                        </th>
-                      </tr>
-                    ) : null}
-                    {section.rows.map((row, index) => (
-                      <tr
-                        key={`${row.productName}-${row.consigneeCode}-${index}`}
-                        className="border-b border-border/80 align-top"
-                      >
-                        <td className="px-2 py-2">{row.productName}</td>
-                        <td className="px-2 py-2">{row.consigneeCode}</td>
-                        <td className="px-2 py-2 text-right">{formatMoney(row.price)}</td>
-                        <td className="px-2 py-2 text-right">{row.quantityOnHand}</td>
-                      </tr>
-                    ))}
-                  </Fragment>
-                ))}
+                          <td className="px-2 py-2">{row.productName}</td>
+                          <td className="px-2 py-2">{row.consigneeCode}</td>
+                          <td className="px-2 py-2 text-right">{formatMoney(row.price)}</td>
+                          <td className="px-2 py-2 text-right">{row.quantityOnHand}</td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))
+                )}
               </tbody>
               <tfoot>
                 <tr className="font-medium">
