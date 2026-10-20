@@ -164,7 +164,7 @@ export function StoreDetailPage() {
             open={removing}
             onOpenChange={setRemoving}
             title={`Delete ${store.name}?`}
-            body="Stock, transfers, sales, invoices, and saved consignee documents for this store are removed from the shared tracker."
+            body="Stock, transfers, sales, invoices, and consignee documents for this store are removed. Products only at this store are removed from the catalog, including their saved photos. Products still at another store stay. The next Shopify pull does not put this store back."
             confirmLabel="Delete store"
             onConfirm={async () => {
               await api(`/api/stores/${store.id}`, { method: "DELETE" });
