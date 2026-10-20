@@ -150,13 +150,15 @@ export function buildStockListing(
   reportDateIso: string,
   stock: StockLine[],
 ): StockListing {
-  const mapped = stock.filter((line) => stockLineOnShelf(line)).map((line) => ({
-    productGroup: pdfSafeText(line.productGroup),
-    productName: pdfSafeText(line.productName),
-    consigneeCode: pdfSafeText(line.consigneeCode),
-    price: line.retailPrice,
-    quantityOnHand: listingQuantity(line),
-  }));
+  const mapped = stock
+    .filter((line) => stockLineOnShelf(line) && pdfSafeText(line.productName).trim())
+    .map((line) => ({
+      productGroup: pdfSafeText(line.productGroup),
+      productName: pdfSafeText(line.productName),
+      consigneeCode: pdfSafeText(line.consigneeCode),
+      price: line.retailPrice,
+      quantityOnHand: listingQuantity(line),
+    }));
   const grouped = new Map<string, StockListingRow[]>();
   for (const row of mapped) {
     const group = row.productGroup.trim();

@@ -12,6 +12,7 @@ type ResourceState<T> = {
 type ResourceOptions = {
   refreshMs?: number;
   shopify?: boolean;
+  wait?: boolean;
 };
 
 const resourceCache = new Map<string, unknown>();
@@ -40,6 +41,7 @@ function remember<T>(url: string, data: T) {
 
 export function useResource<T>(url: string | null, refreshOrOptions?: number | ResourceOptions) {
   const refreshMs = typeof refreshOrOptions === "number" ? refreshOrOptions : refreshOrOptions?.refreshMs;
+  const wait = typeof refreshOrOptions === "object" && Boolean(refreshOrOptions?.wait);
   const requestId = useRef(0);
   const [state, setState] = useState<ResourceState<T>>(() => cachedState(url));
 
@@ -47,10 +49,11 @@ export function useResource<T>(url: string | null, refreshOrOptions?: number | R
     if (!url) return;
     const id = requestId.current;
     const requested = url;
-    const fetchUrl = opts?.fresh ? withRefreshParam(url) : url;
+    const useWait = Boolean(opts?.fresh || wait);
+    const fetchUrl = useWait ? withRefreshParam(url) : url;
     try {
       const next = await api<T>(fetchUrl, {
-        signal: requestSignal(opts?.fresh ? REFRESH_TIMEOUT_MS : PAGE_OPEN_TIMEOUT_MS),
+        signal: requestSignal(useWait ? REFRESH_TIMEOUT_MS : PAGE_OPEN_TIMEOUT_MS),
       });
       if (requestId.current !== id) return;
       remember(requested, next);
@@ -64,7 +67,7 @@ export function useResource<T>(url: string | null, refreshOrOptions?: number | R
         error: message,
       }));
     }
-  }, [url]);
+  }, [url, wait]);
 
   useEffect(() => {
     if (!url) return;
@@ -76,10 +79,13 @@ export function useResource<T>(url: string | null, refreshOrOptions?: number | R
     }
     let cancelled = false;
     const controller = new AbortController();
-    const signal = AbortSignal.any([controller.signal, requestSignal(PAGE_OPEN_TIMEOUT_MS)]);
+    const signal = AbortSignal.any([
+      controller.signal,
+      requestSignal(wait ? REFRESH_TIMEOUT_MS : PAGE_OPEN_TIMEOUT_MS),
+    ]);
     void (async () => {
       try {
-        const next = await api<T>(requested, { signal });
+        const next = await api<T>(wait ? withRefreshParam(requested) : requested, { signal });
         if (cancelled || requestId.current !== id) return;
         remember(requested, next);
         setState({ url: requested, data: next, error: null });
@@ -96,7 +102,7 @@ export function useResource<T>(url: string | null, refreshOrOptions?: number | R
       cancelled = true;
       controller.abort();
     };
-  }, [url]);
+  }, [url, wait]);
 
   useEffect(() => {
     const onVisible = () => {

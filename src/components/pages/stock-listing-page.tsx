@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -8,20 +8,18 @@ import { Button } from "@/components/ui/button";
 import { ErrorBlock, LoadingBlock } from "@/components/feedback";
 import { formatMoney } from "@/lib/format";
 import { downloadPdf, filenameFromDisposition, isShareCancel, trySharePdf } from "@/lib/share-pdf";
-import { buildStockListing, calendarDateInSydney } from "@/lib/stock-listing";
+import type { StockListing } from "@/lib/stock-listing";
 import { useResource } from "@/lib/use-resource";
-import type { StoreDetail } from "@/lib/types";
 
 export function StockListingPage() {
   const searchParams = useSearchParams();
   const storeId = searchParams.get("storeId");
-  const detail = useResource<StoreDetail>(storeId ? `/api/stores/${storeId}` : null, { shopify: true });
-  const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
   const listingHref = storeId ? `/api/print/stock-listing?storeId=${encodeURIComponent(storeId)}` : "";
-  const listing = useMemo(() => {
-    if (!detail.data) return null;
-    return buildStockListing(detail.data.store.name, calendarDateInSydney(), detail.data.stock);
-  }, [detail.data]);
+  const listing = useResource<StockListing>(listingHref ? `${listingHref}&format=json` : null, {
+    wait: true,
+  });
+  const [busy, setBusy] = useState<"email" | "pdf" | null>(null);
+  const report = listing.data;
 
   async function listingPdf() {
     if (!listingHref) throw new Error("Choose a store on Reports first.");
@@ -37,16 +35,16 @@ export function StockListingPage() {
   }
 
   async function emailListing() {
-    if (!listing) return;
+    if (!report) return;
     setBusy("email");
     try {
       const file = await listingPdf();
-      const result = await trySharePdf(file, listing.title);
+      const result = await trySharePdf(file, report.title);
       if (result === "unsupported") {
         downloadPdf(file);
-        const subject = encodeURIComponent(`${listing.title} — ${listing.storeName}`);
+        const subject = encodeURIComponent(`${report.title} — ${report.storeName}`);
         const body = encodeURIComponent(
-          `The ${listing.title} for ${listing.storeName} (${listing.reportDate}) was saved as ${file.name}. Attach that PDF from Downloads.`,
+          `The ${report.title} for ${report.storeName} (${report.reportDate}) was saved as ${file.name}. Attach that PDF from Downloads.`,
         );
         window.setTimeout(() => {
           window.location.href = `mailto:?subject=${subject}&body=${body}`;
@@ -80,23 +78,23 @@ export function StockListingPage() {
           Back to Reports
         </Link>
         <div className="flex flex-wrap gap-2">
-          <Button className="h-10" disabled={!listing} onClick={() => window.print()}>
+          <Button className="h-10" disabled={!report} onClick={() => window.print()}>
             Print
           </Button>
-          <Button className="h-10" variant="outline" disabled={!listing || busy !== null} onClick={() => void emailListing()}>
+          <Button className="h-10" variant="outline" disabled={!report || busy !== null} onClick={() => void emailListing()}>
             {busy === "email" ? "Preparing…" : "Email"}
           </Button>
-          <Button className="h-10" variant="outline" disabled={!listing || busy !== null} onClick={() => void savePdf()}>
+          <Button className="h-10" variant="outline" disabled={!report || busy !== null} onClick={() => void savePdf()}>
             {busy === "pdf" ? "Saving…" : "Save PDF"}
           </Button>
         </div>
       </div>
       {!storeId ? <ErrorBlock message="Choose a store on Reports first." /> : null}
-      {storeId && detail.loading && !detail.data ? <LoadingBlock label="Retrieving Shopify data…" /> : null}
-      {storeId && detail.error && !detail.data ? (
-        <ErrorBlock message={detail.error} onRetry={() => void detail.reload()} />
+      {storeId && listing.loading && !report ? <LoadingBlock label="Retrieving Shopify data…" /> : null}
+      {storeId && listing.error && !report ? (
+        <ErrorBlock message={listing.error} onRetry={() => void listing.reload()} />
       ) : null}
-      {listing ? (
+      {report ? (
         <article className="print-listing grid gap-4 text-foreground">
           <header className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -109,13 +107,13 @@ export function StockListingPage() {
             />
             <div>
               <p className="font-heading text-2xl leading-none">Cotton & Clay</p>
-              <h1 className="mt-2 text-lg font-medium">{listing.title}</h1>
+              <h1 className="mt-2 text-lg font-medium">{report.title}</h1>
             </div>
           </header>
           <p className="text-sm">
-            Store: {listing.storeName}
+            Store: {report.storeName}
             <br />
-            Date of report: {listing.reportDate}
+            Date of report: {report.reportDate}
           </p>
           <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
@@ -128,14 +126,14 @@ export function StockListingPage() {
                 </tr>
               </thead>
               <tbody>
-                {listing.rows.length === 0 ? (
+                {report.rows.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-2 py-3 text-muted-foreground">
                       No stock on hand at this store.
                     </td>
                   </tr>
                 ) : (
-                  listing.groups.map((section, sectionIndex) => (
+                  report.groups.map((section, sectionIndex) => (
                     <Fragment key={`${section.group}-${sectionIndex}`}>
                       {section.group ? (
                         <tr>
@@ -167,7 +165,7 @@ export function StockListingPage() {
                   <td className="px-2 py-2" colSpan={3}>
                     Total Quantity
                   </td>
-                  <td className="px-2 py-2 text-right">{listing.totalQuantity}</td>
+                  <td className="px-2 py-2 text-right">{report.totalQuantity}</td>
                 </tr>
               </tfoot>
             </table>

@@ -102,42 +102,63 @@ describe("consignment stock listing", () => {
   });
 
   it("matches that store’s shelf, including sold-out history", () => {
-    const listing = buildStockListing("Harbour Linen", "2026-10-19", [
-      line({ productName: "Flax Mug — Khaki", quantity: 5, shopifyQtyOnHand: 5 }),
+    const listing = buildStockListing("Love Local", "2026-10-20", [
       line({
-        productName: "Studio Pitcher",
-        productGroup: "Handmade",
-        quantity: 40,
+        productName: "Handmade Ceramic Trinket Dish - Hearts - Sage",
+        productGroup: "Bowl",
+        consigneeCode: "4221",
+        quantity: 3,
+        shopifyQtyOnHand: 3,
+      }),
+      line({
+        productName: "Christmas Bell - Large",
+        productGroup: "Christmas Decorations",
+        consigneeCode: "",
+        quantity: 0,
         shopifyQtyOnHand: 0,
         shopifyMatch: "matched",
       }),
       line({
-        productName: "Warehouse Crate",
-        productGroup: "Handmade",
+        productName: "Flax Mug - Duck Egg",
+        productGroup: "Tableware - Flax",
+        consigneeCode: "",
         quantity: 12,
-        shopifyMatch: "no_product",
+        shopifyQtyOnHand: 0,
+        shopifyMatch: "matched",
       }),
       line({
-        productName: "Christmas Tree",
-        productGroup: "Christmas",
+        productName: "Honey Pot Rattan Basket (Small)",
+        productGroup: "Basket",
         consigneeCode: "",
         quantity: 0,
         shopifyQtyOnHand: 0,
+        shopifyMatch: "matched",
       }),
       line({
-        productName: "Sold flax bowl",
+        productName: "",
+        productGroup: "Shopify",
+        consigneeCode: "",
+        quantity: 2,
+        shopifyQtyOnHand: 2,
+        shopifyMatch: "matched",
+      }),
+      line({
+        productName: "Handmade Ceramic Gift Tag - thank you",
+        productGroup: "Gift Card",
+        consigneeCode: "4234",
         quantity: 0,
         shopifyQtyOnHand: 0,
         sales: 2,
       }),
     ]);
     assert.deepEqual(
-      listing.rows.map((row) => [row.productName, row.quantityOnHand]),
+      listing.rows.map((row) => [row.productName, row.consigneeCode, row.quantityOnHand]),
       [
-        ["Flax Mug - Khaki", 5],
-        ["Sold flax bowl", 0],
+        ["Handmade Ceramic Trinket Dish - Hearts - Sage", "4221", 3],
+        ["Handmade Ceramic Gift Tag - thank you", "4234", 0],
       ],
     );
+    assert.ok(!listing.rows.some((row) => /Christmas Bell|Flax Mug|Honey Pot|^$/.test(row.productName)));
   });
 
   it("leaves consignee code blank when none was saved", () => {

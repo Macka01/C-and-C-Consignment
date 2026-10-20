@@ -1,20 +1,9 @@
-import { getStoreDetail } from "@/lib/data";
 import { HttpError } from "@/lib/errors";
-import { fail, live } from "@/lib/handlers";
-import { withShopifyStock } from "@/lib/shopify-inventory";
-import { buildStockListing, calendarDateInSydney, stockListingFilename } from "@/lib/stock-listing";
+import { fail, json, live } from "@/lib/handlers";
+import { loadStockListing } from "@/lib/load-stock-listing";
+import { stockListingFilename } from "@/lib/stock-listing";
 import { buildStockListingPdf } from "@/lib/stock-listing-pdf";
 import { positiveId } from "@/lib/validate";
-import type { StoreDetail } from "@/lib/types";
-
-async function stockForListing(storeId: number): Promise<StoreDetail> {
-  try {
-    return await withShopifyStock(() => getStoreDetail(storeId));
-  } catch (error) {
-    console.error("Stock listing used tracker quantities after Shopify failed.", error);
-    return getStoreDetail(storeId);
-  }
-}
 
 export async function GET(request: Request) {
   try {
@@ -23,8 +12,10 @@ export async function GET(request: Request) {
     const raw = url.searchParams.get("storeId");
     if (!raw) throw new HttpError("Choose a store.", 400);
     const storeId = positiveId(raw, "Store");
-    const detail = await stockForListing(storeId);
-    const listing = buildStockListing(detail.store.name, calendarDateInSydney(), detail.stock);
+    const listing = await loadStockListing(storeId);
+    if (url.searchParams.get("format") === "json") {
+      return json(listing);
+    }
     const pdf = await buildStockListingPdf(listing);
     const filename = stockListingFilename(listing.storeName, listing.reportDateIso);
     return new Response(new Uint8Array(pdf), {
