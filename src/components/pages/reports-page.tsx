@@ -30,10 +30,11 @@ export function ReportsPage() {
           <CardHeader>
             <CardTitle>Consignment Stock Listing</CardTitle>
             <CardDescription>
-              Products with quantity on hand sit under their Shopify product type, sorted by consignee product code. Each
-              row is name, consignee product code, product price, and quantity on hand, with total quantity at the
-              bottom. Run report and Print or email both open the listing. Use Print for the printer dialog, Email to
-              send, or Save PDF. The tracker does not send email itself.
+              Same products as that store’s Stock tab: on hand now, or a prior sale or transfer there. Sorted by
+              consignee product code under each Shopify product type. Each row is name, consignee product code, product
+              price, and quantity on hand, with total quantity at the bottom. Run report and Print or email both open
+              the listing. Use Print for the printer dialog, Email to send, or Save PDF. The tracker does not send
+              email itself.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">

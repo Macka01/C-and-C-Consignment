@@ -101,7 +101,7 @@ describe("consignment stock listing", () => {
     );
   });
 
-  it("lists only products with quantity on hand at that store", () => {
+  it("matches that store’s shelf, including sold-out history", () => {
     const listing = buildStockListing("Harbour Linen", "2026-10-19", [
       line({ productName: "Flax Mug — Khaki", quantity: 5, shopifyQtyOnHand: 5 }),
       line({
@@ -118,6 +118,13 @@ describe("consignment stock listing", () => {
         shopifyMatch: "no_product",
       }),
       line({
+        productName: "Christmas Tree",
+        productGroup: "Christmas",
+        consigneeCode: "",
+        quantity: 0,
+        shopifyQtyOnHand: 0,
+      }),
+      line({
         productName: "Sold flax bowl",
         quantity: 0,
         shopifyQtyOnHand: 0,
@@ -126,7 +133,10 @@ describe("consignment stock listing", () => {
     ]);
     assert.deepEqual(
       listing.rows.map((row) => [row.productName, row.quantityOnHand]),
-      [["Flax Mug - Khaki", 5]],
+      [
+        ["Flax Mug - Khaki", 5],
+        ["Sold flax bowl", 0],
+      ],
     );
   });
 
