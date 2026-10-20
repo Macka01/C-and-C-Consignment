@@ -15,6 +15,8 @@ const HEADER_SIZE = 8;
 const BODY_SIZE = 9;
 const LINE = 12;
 const GROUP_HEIGHT = 18;
+/** Space after the last product of one type before the next type heading. */
+const GROUP_GAP = 16;
 const CELL_PAD = 5;
 const INK = rgb(0.16, 0.12, 0.1);
 const MUTED = rgb(0.42, 0.36, 0.32);
@@ -105,6 +107,7 @@ export async function buildStockListingPdf(listing: StockListing) {
 
   let page = addPage();
   let y = PAGE.height - MARGIN;
+  let lastWasProduct = false;
 
   const paintColumnHeadings = () => {
     page.drawRectangle({
@@ -174,6 +177,7 @@ export async function buildStockListingPdf(listing: StockListing) {
   const startPage = (continued: boolean) => {
     page = continued ? addPage() : page;
     y = PAGE.height - MARGIN;
+    lastWasProduct = false;
     paintStamp();
     paintColumnHeadings();
   };
@@ -217,11 +221,15 @@ export async function buildStockListingPdf(listing: StockListing) {
       thickness: 0.4,
       color: RULE,
     });
+    lastWasProduct = true;
   };
 
   const drawGroup = (group: string) => {
-    if (y - GROUP_HEIGHT < MARGIN + 48) {
+    const gap = lastWasProduct ? GROUP_GAP : 0;
+    if (y - gap - GROUP_HEIGHT < MARGIN + 48) {
       startPage(true);
+    } else if (gap) {
+      y -= gap;
     }
     page.drawRectangle({
       x: tableLeft,
@@ -238,6 +246,7 @@ export async function buildStockListingPdf(listing: StockListing) {
       thickness: 0.6,
       color: RULE,
     });
+    lastWasProduct = false;
   };
 
   for (const section of listing.groups) {

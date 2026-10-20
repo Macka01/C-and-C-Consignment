@@ -25,8 +25,8 @@ function line(partial: Partial<StockLine> & Pick<StockLine, "productName" | "qua
   };
 }
 
-function pdfStrings(bytes: Buffer) {
-  const texts: string[] = [];
+function pdfPlacements(bytes: Buffer) {
+  const placements: Array<{ text: string; size: number; y: number }> = [];
   let index = 0;
   while (index >= 0) {
     const start = bytes.indexOf("stream\n", index);
@@ -45,11 +45,21 @@ function pdfStrings(bytes: Buffer) {
     }
     const body = decoded.toString("latin1");
     if (!body.includes("BT")) continue;
-    for (const match of body.matchAll(/<([0-9A-Fa-f]+)>/g)) {
-      texts.push(Buffer.from(match[1], "hex").toString("latin1"));
+    for (const match of body.matchAll(
+      /\/Helvetica(?:-Bold)?-\d+ ([\d.]+) Tf[\s\S]*?1 0 0 1 [\d.]+ ([\d.]+) Tm\n<([0-9A-Fa-f]+)> Tj/g,
+    )) {
+      placements.push({
+        size: Number(match[1]),
+        y: Number(match[2]),
+        text: Buffer.from(match[3], "hex").toString("latin1"),
+      });
     }
   }
-  return texts;
+  return placements;
+}
+
+function pdfStrings(bytes: Buffer) {
+  return pdfPlacements(bytes).map((placement) => placement.text);
 }
 
 describe("consignment stock listing PDF", () => {
@@ -71,5 +81,44 @@ describe("consignment stock listing PDF", () => {
     assert.equal(strings.filter((value) => value === "Product Price").length, pageMarks.length);
     assert.equal(strings.filter((value) => value === "Quantity on Hand").length, pageMarks.length);
     assert.ok(!strings.includes("Description"));
+  });
+
+  it("keeps a gap between product types without dropping later-page headings", async () => {
+    const stock = [
+      ...Array.from({ length: 3 }, (_, index) =>
+        line({
+          productName: `Ceramic Gift Tag ${index + 1}`,
+          productGroup: "Handmade Ceramics",
+          quantity: 1,
+          shopifyQtyOnHand: 1,
+        }),
+      ),
+      ...Array.from({ length: 3 }, (_, index) =>
+        line({
+          productName: `Flax Mug ${index + 1}`,
+          productGroup: "Tableware - Flax",
+          quantity: 2,
+          shopifyQtyOnHand: 2,
+        }),
+      ),
+    ];
+    const listing = buildStockListing("Love Local", "2026-10-20", stock);
+    const pdf = await buildStockListingPdf(listing);
+    const placements = pdfPlacements(Buffer.from(pdf));
+    const strings = placements.map((placement) => placement.text);
+    const brand = placements.find((placement) => placement.text === "Cotton & Clay");
+    const lastCeramic = placements.findLast((placement) => placement.text.startsWith("Ceramic Gift Tag"));
+    const nextType = placements.find((placement) => placement.text === "Tableware - Flax");
+    assert.equal(brand?.size, 28);
+    assert.ok(lastCeramic && nextType, "expected both product types in the PDF");
+    assert.ok(
+      lastCeramic.y - nextType.y >= 24,
+      `type heading sat too close to the previous product (${lastCeramic.y} then ${nextType.y})`,
+    );
+    assert.ok(strings.includes("Handmade Ceramics"));
+    assert.equal(
+      strings.filter((value) => value === "Product Name").length,
+      strings.filter((value) => /^Page \d+ of \d+$/.test(value)).length,
+    );
   });
 });
