@@ -31,8 +31,6 @@ type Fonts = { regular: PDFFont; bold: PDFFont };
 export function cottonClayLogoPath() {
   const files = [
     path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "cotton-and-clay-logo.png"),
-    path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "icon-192.png"),
-    path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "icon-512.png"),
   ];
   return files.find((file) => fs.existsSync(file)) ?? null;
 }

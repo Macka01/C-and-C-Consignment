@@ -429,7 +429,7 @@ To use it **away from home Wi-Fi without Tailscale on the phone/iPad**, the URL 
 
 ### Home-screen icon (iPhone / iPad)
 
-After the tracker loads in Safari: Share → **Add to Home Screen**. Name it Cotton & Clay. It opens as a standalone app with the pitcher icon.
+After the tracker loads in Safari: Share → **Add to Home Screen**. Name it Cotton & Clay. The icon is the Cotton and Clay stamp with Consignment underneath. If an old pitcher icon is still on the home screen, delete it and add the site again.
 
 ### Away from home, no Tailscale on phones (after update)
 
