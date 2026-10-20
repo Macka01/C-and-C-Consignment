@@ -5,7 +5,6 @@ export const STOCK_LISTING_TITLE = "Consignment Stock Listing";
 export type StockListingRow = {
   productGroup: string;
   productName: string;
-  description: string;
   consigneeCode: string;
   price: number;
   quantityOnHand: number;
@@ -87,13 +86,6 @@ export function pdfSafeText(text: string) {
   return out;
 }
 
-export function firstSentence(text: string) {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (!normalized) return "";
-  const match = normalized.match(/^.*?[.!?](?=\s|$)/);
-  return (match ? match[0] : normalized).trim();
-}
-
 export function wrapLines(text: string, widthOf: (value: string) => number, maxWidth: number) {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return [""];
@@ -146,7 +138,6 @@ export function buildStockListing(
   const mapped = [...stock].map((line) => ({
     productGroup: pdfSafeText(line.productGroup),
     productName: pdfSafeText(line.productName),
-    description: pdfSafeText(firstSentence(line.description)),
     consigneeCode: pdfSafeText(line.consigneeCode),
     price: line.retailPrice,
     quantityOnHand: line.shopifyQtyOnHand ?? line.quantity,

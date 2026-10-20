@@ -21,11 +21,10 @@ const MUTED = rgb(0.42, 0.36, 0.32);
 const RULE = rgb(0.78, 0.7, 0.62);
 const HEADER_FILL = rgb(0.96, 0.93, 0.88);
 const COLUMNS = [
-  { key: "productName" as const, label: "Product Name", width: 118, align: "left" as const },
-  { key: "description" as const, label: "Description", width: 168, align: "left" as const },
-  { key: "consigneeCode" as const, label: "Consignee Product Code", width: 92, align: "left" as const },
-  { key: "price" as const, label: "Product Price", width: 72, align: "right" as const },
-  { key: "quantityOnHand" as const, label: "Quantity on Hand", width: 61, align: "right" as const },
+  { key: "productName" as const, label: "Product Name", width: 220, align: "left" as const },
+  { key: "consigneeCode" as const, label: "Consignee Product Code", width: 130, align: "left" as const },
+  { key: "price" as const, label: "Product Price", width: 80, align: "right" as const },
+  { key: "quantityOnHand" as const, label: "Quantity on Hand", width: 81, align: "right" as const },
 ];
 
 type Fonts = { regular: PDFFont; bold: PDFFont };

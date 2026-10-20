@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 import {
   buildStockListing,
   calendarDateInSydney,
-  firstSentence,
   pdfSafeText,
   stockListingFilename,
   wrapLines,
@@ -52,6 +51,7 @@ describe("consignment stock listing", () => {
     assert.equal(listing.rows[0]?.quantityOnHand, 8);
     assert.equal(listing.rows[1]?.quantityOnHand, 10);
     assert.equal(listing.totalQuantity, 18);
+    assert.equal("description" in listing.rows[0]!, false);
   });
 
   it("sits products under their Shopify product type", () => {
@@ -76,23 +76,6 @@ describe("consignment stock listing", () => {
       line({ productName: "Cheese Sticks", quantity: 2, consigneeCode: "" }),
     ]);
     assert.equal(listing.rows[0]?.consigneeCode, "");
-  });
-
-  it("keeps only the first sentence of the description", () => {
-    assert.equal(
-      firstSentence("Handmade serving bowl with a gloss white interior. Raw speckle exterior."),
-      "Handmade serving bowl with a gloss white interior.",
-    );
-    assert.equal(firstSentence("Matte flax mug."), "Matte flax mug.");
-    assert.equal(firstSentence("No stop here"), "No stop here");
-    const listing = buildStockListing("Harbour Linen", "2026-10-19", [
-      line({
-        productName: "Everyday Bowl — Speckle Grey",
-        quantity: 5,
-        description: "Handmade serving bowl with a gloss white interior. Raw speckle exterior.",
-      }),
-    ]);
-    assert.equal(listing.rows[0]?.description, "Handmade serving bowl with a gloss white interior.");
   });
 
   it("strips characters Helvetica cannot print", () => {

@@ -118,11 +118,10 @@ export function StockListingPage() {
             Date of report: {listing.reportDate}
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+            <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/60">
                   <th className="px-2 py-2 font-medium">Product Name</th>
-                  <th className="px-2 py-2 font-medium">Description</th>
                   <th className="px-2 py-2 font-medium">Consignee Product Code</th>
                   <th className="px-2 py-2 text-right font-medium">Product Price</th>
                   <th className="px-2 py-2 text-right font-medium">Quantity on Hand</th>
@@ -134,7 +133,7 @@ export function StockListingPage() {
                     {section.group ? (
                       <tr>
                         <th
-                          colSpan={5}
+                          colSpan={4}
                           className="bg-muted/60 px-2 py-2 text-left font-heading text-base font-medium"
                         >
                           {section.group}
@@ -147,7 +146,6 @@ export function StockListingPage() {
                         className="border-b border-border/80 align-top"
                       >
                         <td className="px-2 py-2">{row.productName}</td>
-                        <td className="px-2 py-2">{row.description}</td>
                         <td className="px-2 py-2">{row.consigneeCode}</td>
                         <td className="px-2 py-2 text-right">{formatMoney(row.price)}</td>
                         <td className="px-2 py-2 text-right">{row.quantityOnHand}</td>
@@ -158,7 +156,7 @@ export function StockListingPage() {
               </tbody>
               <tfoot>
                 <tr className="font-medium">
-                  <td className="px-2 py-2" colSpan={4}>
+                  <td className="px-2 py-2" colSpan={3}>
                     Total Quantity
                   </td>
                   <td className="px-2 py-2 text-right">{listing.totalQuantity}</td>
