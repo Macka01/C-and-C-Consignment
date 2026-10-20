@@ -131,6 +131,16 @@ export function wrapLines(text: string, widthOf: (value: string) => number, maxW
   return lines.length ? lines : [""];
 }
 
+function compareListingRows(a: StockListingRow, b: StockListingRow) {
+  const left = a.consigneeCode.trim();
+  const right = b.consigneeCode.trim();
+  if (!left && right) return 1;
+  if (left && !right) return -1;
+  const byCode = left.localeCompare(right, "en", { numeric: true, sensitivity: "base" });
+  if (byCode !== 0) return byCode;
+  return a.productName.localeCompare(b.productName, "en", { sensitivity: "base" });
+}
+
 export function buildStockListing(
   storeName: string,
   reportDateIso: string,
@@ -158,7 +168,7 @@ export function buildStockListing(
     })
     .map(([group, items]) => ({
       group,
-      rows: items.sort((a, b) => a.productName.localeCompare(b.productName, "en", { sensitivity: "base" })),
+      rows: items.sort(compareListingRows),
     }));
   const rows = groups.flatMap((section) => section.rows);
   return {

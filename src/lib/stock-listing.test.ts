@@ -46,12 +46,42 @@ describe("consignment stock listing", () => {
     assert.equal(listing.reportDate, "19 Oct 2026");
     assert.equal(listing.groups.length, 1);
     assert.equal(listing.groups[0]?.group, "Flax ceramics");
-    assert.equal(listing.rows[0]?.productName, "Flax Mug - Khaki");
-    assert.equal(listing.rows[0]?.consigneeCode, "HLB-MUG-KH");
-    assert.equal(listing.rows[0]?.quantityOnHand, 8);
-    assert.equal(listing.rows[1]?.quantityOnHand, 10);
+    assert.equal(listing.rows[0]?.productName, "Flax Serve Bowl - Duck Egg");
+    assert.equal(listing.rows[0]?.consigneeCode, "HLB-BOWL-DE");
+    assert.equal(listing.rows[0]?.quantityOnHand, 10);
+    assert.equal(listing.rows[1]?.productName, "Flax Mug - Khaki");
+    assert.equal(listing.rows[1]?.consigneeCode, "HLB-MUG-KH");
+    assert.equal(listing.rows[1]?.quantityOnHand, 8);
     assert.equal(listing.totalQuantity, 18);
     assert.equal("description" in listing.rows[0]!, false);
+  });
+
+  it("sorts products by consignee code within each Shopify type", () => {
+    const listing = buildStockListing("Harbour Linen", "2026-10-19", [
+      line({ productName: "Flax Mug — Khaki", consigneeCode: "HLB-MUG-KH", quantity: 3 }),
+      line({ productName: "Loose stem", productGroup: "", consigneeCode: "", quantity: 1 }),
+      line({ productName: "Everyday Bowl — Speckle Grey", productGroup: "Handmade", consigneeCode: "HLB-BOWL-SG", quantity: 5 }),
+      line({ productName: "Uncoded flax platter", consigneeCode: "", quantity: 2 }),
+      line({ productName: "Flax Serve Bowl — Duck Egg", consigneeCode: "hlb-bowl-de", quantity: 2 }),
+    ]);
+    assert.deepEqual(
+      listing.groups.map((section) => [
+        section.group,
+        section.rows.map((row) => [row.consigneeCode, row.productName]),
+      ]),
+      [
+        [
+          "Flax ceramics",
+          [
+            ["hlb-bowl-de", "Flax Serve Bowl - Duck Egg"],
+            ["HLB-MUG-KH", "Flax Mug - Khaki"],
+            ["", "Uncoded flax platter"],
+          ],
+        ],
+        ["Handmade", [["HLB-BOWL-SG", "Everyday Bowl - Speckle Grey"]]],
+        ["", [["", "Loose stem"]]],
+      ],
+    );
   });
 
   it("sits products under their Shopify product type", () => {
