@@ -18,6 +18,9 @@ export function isOpenPath(pathname: string) {
     return true;
   }
   if (pathname === "/api/health" || pathname === "/api/access") return true;
+  if (pathname.startsWith("/showcase")) return true;
+  if (pathname.startsWith("/api/showcase/")) return true;
+  if (/^\/api\/products\/\d+\/image$/.test(pathname)) return true;
   if (pathname.startsWith("/_next/")) return true;
   if (pathname.startsWith("/icon-") || pathname === "/apple-touch-icon.png") return true;
   return /\.(?:png|jpg|jpeg|svg|ico|webp|webmanifest)$/i.test(pathname);

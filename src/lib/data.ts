@@ -8,6 +8,7 @@ import { HttpError } from "@/lib/errors";
 import { keepConsigneeCode, shopifyCatalogName, shopifyProductGroup, stripShopifyDefaultTitle } from "@/lib/shopify-match";
 import { BELONGS_ON_STORE_SHELF_SQL, DELETE_UNSTOCKED_SHELF_SQL } from "@/lib/shelf-membership";
 import { attachStockTotals } from "@/lib/stock-totals";
+import { buildShowcase, type ProductShowcase, type ShowcaseCatalogRow } from "@/lib/showcase";
 import type {
   Dashboard,
   Invoice,
@@ -398,6 +399,36 @@ export function listProducts(): Product[] {
     `)
     .all() as ProductRow[];
   return rows.map(mapProduct);
+}
+
+function listCatalogShowcaseRows(): ShowcaseCatalogRow[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT id, product_group, name, description, retail_price, image_name
+       FROM products
+       WHERE TRIM(name) != ''
+       ORDER BY id`,
+    )
+    .all() as Array<{
+    id: number;
+    product_group: string;
+    name: string;
+    description: string;
+    retail_price: number;
+    image_name: string | null;
+  }>;
+  return rows.map((row) => ({
+    id: row.id,
+    productGroup: row.product_group,
+    name: stripShopifyDefaultTitle(row.name) || row.name,
+    description: row.description,
+    retailPrice: row.retail_price,
+    imageUrl: row.image_name ? publicProductImageUrl(row.id, row.image_name) : null,
+  }));
+}
+
+export function getShowcase(productId: number): ProductShowcase | null {
+  return buildShowcase(productId, listCatalogShowcaseRows());
 }
 
 export function getProduct(id: number): Product | null {

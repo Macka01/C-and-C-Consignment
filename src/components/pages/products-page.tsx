@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "cn";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader, RefreshButton } from "@/components/feedback";
 import { ProductPhoto } from "@/components/product-photo";
 import { groupByProductGroup } from "@/lib/product-groups";
@@ -26,7 +28,7 @@ export function ProductsPage() {
       <PageHeader
         eyebrow="Catalog"
         title="Products"
-        lede="The catalog comes from Shopify. Products appear when they are at a consignee location. Quantity and sales come from Shopify."
+        lede="The catalog comes from Shopify. Products appear when they are at a consignee location. Open Showcase on a piece to send that page to a shop owner."
         action={<RefreshButton onClick={() => void products.reload({ fresh: true })} />}
       />
       {products.loading && !products.data ? <LoadingBlock label="Retrieving Shopify data…" /> : null}
@@ -61,8 +63,8 @@ export function ProductsPage() {
           {group ? <h2 className="font-heading text-2xl">{group}</h2> : null}
           <ul className="grid gap-3 md:grid-cols-2">
             {items.map((product) => (
-              <li key={product.id}>
-                <Link href={`/products/${product.id}`} className="flex h-full gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/40">
+              <li key={product.id} className="flex h-full flex-col rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+                <Link href={`/products/${product.id}`} className="flex min-w-0 flex-1 gap-3 hover:opacity-90">
                   <ProductPhoto url={product.imageUrl} name={product.name} />
                   <div className="min-w-0">
                     <p className="font-medium">{product.name}</p>
@@ -73,6 +75,14 @@ export function ProductsPage() {
                     </p>
                   </div>
                 </Link>
+                <div className="mt-4">
+                  <Link
+                    href={`/showcase/${product.id}`}
+                    className={cn(buttonVariants({ variant: "outline" }), "h-10 px-3")}
+                  >
+                    Showcase
+                  </Link>
+                </div>
               </li>
             ))}
           </ul>

@@ -100,6 +100,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (pathname === "/login") {
     return <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>;
   }
+  if (pathname.startsWith("/showcase")) {
+    return <main className="min-h-screen">{children}</main>;
+  }
 
   return (
     <ShopifyStatusProvider>

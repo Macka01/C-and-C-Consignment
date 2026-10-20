@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 import { Input } from "@/components/ui/input";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "@/components/feedback";
 import { ProductFormDialog } from "@/components/product-form-dialog";
@@ -40,6 +41,9 @@ export function ProductDetailPage() {
             lede={product.description}
             action={
               <>
+                <Link href={`/showcase/${product.id}`} className={cn(buttonVariants({ variant: "outline" }), "h-10 px-3")}>
+                  Showcase
+                </Link>
                 <Button variant="outline" className="h-10" onClick={() => setEditing(true)}>
                   Edit product
                 </Button>
