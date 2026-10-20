@@ -7,6 +7,7 @@ import {
   shopifyCatalogName,
   shopifyProductGroup,
   shopifyProductName,
+  stockLineOnShelf,
   type ShopifyLocationInventory,
 } from "@/lib/shopify-match";
 import {
@@ -686,6 +687,6 @@ export async function withShopifyStock<T extends StoreDetail | ProductDetail>(
     shopify: { configured: shopifyConfigured(), error, warning },
     stock: detail.stock
       .map((line) => attachLine(line, feed?.locations ?? null))
-      .filter((line) => line.shopifyMatch !== "no_product"),
+      .filter((line) => stockLineOnShelf(line)),
   };
 }

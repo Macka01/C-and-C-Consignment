@@ -1,3 +1,4 @@
+import { stockLineOnShelf } from "./shopify-match.ts";
 import type { StockLine } from "@/lib/types";
 
 export const STOCK_LISTING_TITLE = "Consignment Stock Listing";
@@ -135,7 +136,7 @@ export function buildStockListing(
   reportDateIso: string,
   stock: StockLine[],
 ): StockListing {
-  const mapped = [...stock].map((line) => ({
+  const mapped = stock.filter((line) => stockLineOnShelf(line)).map((line) => ({
     productGroup: pdfSafeText(line.productGroup),
     productName: pdfSafeText(line.productName),
     consigneeCode: pdfSafeText(line.consigneeCode),

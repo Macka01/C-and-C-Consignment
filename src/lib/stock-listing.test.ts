@@ -71,6 +71,38 @@ describe("consignment stock listing", () => {
     );
   });
 
+  it("lists only products on that store’s shelf, not the catalog", () => {
+    const listing = buildStockListing("Harbour Linen", "2026-10-19", [
+      line({ productName: "Flax Mug — Khaki", quantity: 5, shopifyQtyOnHand: 5 }),
+      line({
+        productName: "Studio Pitcher",
+        productGroup: "Handmade",
+        quantity: 40,
+        shopifyQtyOnHand: 0,
+        shopifyMatch: "matched",
+      }),
+      line({
+        productName: "Warehouse Crate",
+        productGroup: "Handmade",
+        quantity: 12,
+        shopifyMatch: "no_product",
+      }),
+      line({
+        productName: "Sold flax bowl",
+        quantity: 0,
+        shopifyQtyOnHand: 0,
+        sales: 2,
+      }),
+    ]);
+    assert.deepEqual(
+      listing.rows.map((row) => [row.productName, row.quantityOnHand]),
+      [
+        ["Flax Mug - Khaki", 5],
+        ["Sold flax bowl", 0],
+      ],
+    );
+  });
+
   it("leaves consignee code blank when none was saved", () => {
     const listing = buildStockListing("Love Local", "2026-10-19", [
       line({ productName: "Cheese Sticks", quantity: 2, consigneeCode: "" }),

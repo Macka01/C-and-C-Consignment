@@ -13,6 +13,7 @@ import {
   stripShopifyDefaultTitle,
   shelfBelongsAtStore,
   staysOnMatchedShelf,
+  stockLineOnShelf,
   shopifyVariance,
   type ShopifyLocationInventory,
 } from "./shopify-match.ts";
@@ -176,5 +177,23 @@ describe("shopify inventory match", () => {
     assert.equal(staysOnMatchedShelf(null, 1), true);
     assert.equal(staysOnMatchedShelf(0, 0), false);
     assert.equal(staysOnMatchedShelf(4, 0), true);
+  });
+
+  it("does not put the catalog on a store shelf", () => {
+    const base = {
+      quantity: 0,
+      shopifyQtyOnHand: null as number | null,
+      shopifyMatch: "matched" as const,
+      transferredIn: 0,
+      transferredOut: 0,
+      sales: 0,
+    };
+    assert.equal(stockLineOnShelf({ ...base, shopifyQtyOnHand: 6 }), true);
+    assert.equal(stockLineOnShelf({ ...base, shopifyQtyOnHand: 0 }), false);
+    assert.equal(stockLineOnShelf({ ...base, shopifyQtyOnHand: 0, sales: 1 }), true);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 9, shopifyMatch: "no_product" }), false);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 9, shopifyMatch: "no_product", transferredIn: 4 }), true);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 3, shopifyMatch: "unavailable" }), true);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyMatch: "unavailable" }), false);
   });
 });

@@ -182,6 +182,29 @@ export function staysOnMatchedShelf(onHand: number | null, shopifyMovementCount:
   return onHand !== null && onHandCount(onHand) > 0;
 }
 
+export function shelfMovementCount(line: { transferredIn: number; transferredOut: number; sales: number }) {
+  return line.transferredIn + line.transferredOut + line.sales;
+}
+
+/** Same rule as store stock: on-hand at this location, or a prior sale/transfer there. Not the whole catalog. */
+export function stockLineOnShelf(line: {
+  quantity: number;
+  shopifyQtyOnHand: number | null;
+  shopifyMatch: ShopifyMatch;
+  transferredIn: number;
+  transferredOut: number;
+  sales: number;
+}) {
+  const movements = shelfMovementCount(line);
+  if (line.shopifyMatch === "matched") {
+    return staysOnMatchedShelf(line.shopifyQtyOnHand ?? line.quantity, movements);
+  }
+  if (line.shopifyMatch === "no_product") {
+    return movements > 0;
+  }
+  return shelfBelongsAtStore(line.quantity, movements);
+}
+
 export function compareStockToShopify(
   line: { storeName?: string; productName: string; consigneeCode: string; quantity: number },
   locations: ShopifyLocationInventory[] | null,
