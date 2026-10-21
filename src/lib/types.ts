@@ -12,6 +12,12 @@ export type Store = {
   retailValue: number;
 };
 
+/** Shopify inventory location + on-hand qty for catalog cards (no transactions). */
+export type LocationStock = {
+  locationName: string;
+  quantity: number;
+};
+
 export type Product = {
   id: number;
   productGroup: string;
@@ -21,6 +27,8 @@ export type Product = {
   units: number;
   storeCount: number;
   imageUrl: string | null;
+  /** All Shopify locations with on-hand > 0 for this variant, including the warehouse. */
+  locationStock: LocationStock[];
 };
 
 export type ShopifyMatch = "matched" | "no_location" | "no_product" | "unavailable";

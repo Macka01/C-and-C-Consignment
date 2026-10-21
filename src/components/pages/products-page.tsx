@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "cn";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader, RefreshButton } from "@/components/feedback";
+import { LocationStockList } from "@/components/location-stock-list";
 import { ProductPhoto } from "@/components/product-photo";
 import { groupByProductGroup } from "@/lib/product-groups";
 import { matchesProductSearch } from "@/lib/stock-search";
@@ -73,6 +74,11 @@ export function ProductsPage() {
                       {formatMoney(product.retailPrice)} · {product.units} on shelves · {product.storeCount}{" "}
                       {product.storeCount === 1 ? "store" : "stores"}
                     </p>
+                    <LocationStockList
+                      className="mt-2"
+                      locations={product.locationStock ?? []}
+                      empty="No Shopify stock at a location yet"
+                    />
                   </div>
                 </Link>
                 <div className="mt-4">

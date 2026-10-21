@@ -73,6 +73,34 @@
       ]
     },
     {
+      "locationId": "gid://shopify/Location/3",
+      "locationName": "63 Ferndale St",
+      "items": [
+        {
+          "variantId": "gid://shopify/ProductVariant/11",
+          "sku": "HLB-BOWL-DE",
+          "title": "Flax Serve Bowl",
+          "variantTitle": "Duck Egg",
+          "displayName": "Flax Serve Bowl — Duck Egg",
+          "productType": "Flax ceramics",
+          "description": null,
+          "price": 15,
+          "onHand": 24
+        },
+        {
+          "variantId": "gid://shopify/ProductVariant/12",
+          "sku": "HLB-MUG-KH",
+          "title": "Flax Mug",
+          "variantTitle": "Khaki",
+          "displayName": "Flax Mug — Khaki",
+          "productType": "Flax ceramics",
+          "description": null,
+          "price": 18,
+          "onHand": 40
+        }
+      ]
+    },
+    {
       "locationId": "gid://shopify/Location/2",
       "locationName": "Terrigal Home Room",
       "items": [

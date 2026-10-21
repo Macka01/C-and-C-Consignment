@@ -8,6 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "cn";
 import { Input } from "@/components/ui/input";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "@/components/feedback";
+import { LocationStockList } from "@/components/location-stock-list";
 import { ProductFormDialog } from "@/components/product-form-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MovementList } from "@/components/movement-list";
@@ -59,12 +60,25 @@ export function ProductDetailPage() {
           </p>
 
           <section className="grid gap-3">
-            <h2 className="font-heading text-2xl">Stock by store</h2>
+            <h2 className="font-heading text-2xl">Stock on hand</h2>
             <p className="max-w-xl text-sm text-muted-foreground">
-              Transferred in, transferred out, sales, other, and boxed on-hand for this product at each store. History
-              is below.
+              Every Shopify location with quantity for this product, including the warehouse at 63 Ferndale St.
             </p>
             <ShopifyStockNote shopify={detail.data.shopify} />
+            <div className="max-w-md rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+              <LocationStockList
+                locations={product.locationStock ?? []}
+                empty="No Shopify on-hand at any location yet"
+              />
+            </div>
+          </section>
+
+          <section className="grid gap-3">
+            <h2 className="font-heading text-2xl">Stock by store</h2>
+            <p className="max-w-xl text-sm text-muted-foreground">
+              Consignee shops only: transferred in, transferred out, sales, other, and boxed on-hand. History is
+              below.
+            </p>
             {detail.data.stock.length === 0 ? (
               <EmptyBlock title="Not at a store yet" body="Shopify will place it here when it has quantity at a matching location." />
             ) : (

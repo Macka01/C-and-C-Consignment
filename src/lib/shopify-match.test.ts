@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   compareStockToShopify,
+  locationStockForVariant,
   matchShopifyItem,
   matchShopifyLocation,
   matchStoreForShopifyEvent,
@@ -188,6 +189,47 @@ describe("shopify inventory match", () => {
     assert.equal(staysOnMatchedShelf(null, 1), true);
     assert.equal(staysOnMatchedShelf(0, 0), false);
     assert.equal(staysOnMatchedShelf(4, 0), true);
+  });
+
+  it("lists on-hand at every Shopify location for a variant, including Ferndale", () => {
+    const ferndale: ShopifyLocationInventory = {
+      locationId: "gid://shopify/Location/99",
+      locationName: "63 Ferndale St",
+      items: [
+        {
+          variantId: "gid://shopify/ProductVariant/1",
+          sku: "FLAX-BOWL-DE",
+          title: "Flax Serve Bowl",
+          variantTitle: "Duck Egg",
+          displayName: "Flax Serve Bowl — Duck Egg",
+          productType: "Flax ceramics",
+          description: null,
+          price: 15,
+          onHand: 24,
+        },
+        {
+          variantId: "gid://shopify/ProductVariant/2",
+          sku: "HLB-MUG-KH",
+          title: "Flax Mug",
+          variantTitle: "Khaki",
+          displayName: "Flax Mug — Khaki",
+          productType: "Flax ceramics",
+          description: null,
+          price: 18,
+          onHand: 0,
+        },
+      ],
+    };
+    assert.deepEqual(locationStockForVariant("gid://shopify/ProductVariant/1", [harbour, ferndale]), [
+      { locationName: "63 Ferndale St", quantity: 24 },
+      { locationName: "Harbour Linen", quantity: 11 },
+    ]);
+    assert.deepEqual(locationStockForVariant("gid://shopify/ProductVariant/2", [harbour, ferndale]), [
+      { locationName: "Harbour Linen", quantity: 4 },
+    ]);
+    assert.deepEqual(locationStockForVariant("gid://shopify/ProductVariant/missing", [harbour, ferndale]), []);
+    assert.deepEqual(locationStockForVariant(null, [harbour]), []);
+    assert.deepEqual(locationStockForVariant("gid://shopify/ProductVariant/1", null), []);
   });
 
   it("does not treat a leftover qty-0 store_stock row as stock", () => {
