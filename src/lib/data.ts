@@ -568,29 +568,6 @@ export function updateProduct(id: number, input: ProductInput): Product {
   return getProduct(id)!;
 }
 
-export function deleteProduct(id: number) {
-  requireProduct(id);
-  const db = getDb();
-  const used = db
-    .prepare(`
-      SELECT
-        (SELECT COUNT(*) FROM store_stock WHERE product_id = ?) +
-        (SELECT COUNT(*) FROM movements WHERE product_id = ?) AS n
-    `)
-    .get(id, id) as { n: number };
-  if (used.n > 0) {
-    throw new HttpError("This product is on a shelf or already has history. Edit it instead of deleting it.", 409);
-  }
-  const photos = db
-    .prepare(`SELECT stored_name FROM product_photos WHERE product_id = ?`)
-    .all(id) as { stored_name: string }[];
-  const image = getProductImageRecord(id);
-  db.prepare(`DELETE FROM products WHERE id = ?`).run(id);
-  const names = new Set(photos.map((photo) => photo.stored_name));
-  if (image?.imageName) names.add(image.imageName);
-  for (const name of names) fs.rmSync(productImagePath(name), { force: true });
-}
-
 export function purgeUnstockedShelves() {
   getDb().prepare(DELETE_UNSTOCKED_SHELF_SQL).run();
 }
