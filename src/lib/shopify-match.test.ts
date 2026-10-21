@@ -8,6 +8,8 @@ import {
   normalizeShopifyName,
   productRefFromItem,
   keepConsigneeCode,
+  salesFromOrders,
+  shopifyCatalogIncluded,
   shopifyCatalogName,
   shopifyProductGroup,
   shopifyProductName,
@@ -207,5 +209,38 @@ describe("shopify inventory match", () => {
     assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyMatch: "no_product", transferredIn: 4 }), true);
     assert.equal(stockLineOnShelf({ ...base, quantity: 3, shopifyMatch: "unavailable" }), true);
     assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyMatch: "unavailable" }), false);
+  });
+
+  it("leaves discontinued product types and draft products out of the catalog pull", () => {
+    assert.equal(shopifyCatalogIncluded({ productType: "Discontinued", productStatus: "ACTIVE" }), false);
+    assert.equal(shopifyCatalogIncluded({ productGroup: "discontinued", productStatus: "ACTIVE" }), false);
+    assert.equal(shopifyCatalogIncluded({ productType: "  DRAFT  ", productStatus: "draft" }), false);
+    assert.equal(shopifyCatalogIncluded({ productType: "Mug", productStatus: "DRAFT" }), false);
+    assert.equal(shopifyCatalogIncluded({ productType: "Mug", productStatus: "ACTIVE" }), true);
+    assert.equal(shopifyCatalogIncluded({ productType: "Mug", productStatus: "ARCHIVED" }), true);
+    assert.equal(shopifyCatalogIncluded({ productType: "Discontinued ceramics", productStatus: "ACTIVE" }), true);
+    assert.equal(shopifyCatalogIncluded({ productType: "Bowl" }), true);
+    const sales = salesFromOrders([
+      {
+        id: "gid://shopify/LineItem/1",
+        orderName: "#1",
+        createdAt: "2026-10-20T00:00:00.000Z",
+        cancelled: false,
+        locationName: "Harbour Linen",
+        quantity: 1,
+        unitPrice: 12,
+        product: {
+          variantId: "gid://shopify/ProductVariant/3",
+          sku: "DRAFT",
+          name: "Draft Mug",
+          productGroup: "Mug",
+          productStatus: "DRAFT",
+          description: "",
+          retailPrice: 12,
+          imageUrl: null,
+        },
+      },
+    ]);
+    assert.deepEqual(sales, []);
   });
 });

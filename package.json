@@ -11,7 +11,7 @@
     "server:update": "bash server/macos/update.sh",
     "server:uninstall": "bash server/macos/uninstall.sh",
     "lint": "eslint",
-    "test": "tsx --test src/lib/shopify-match.test.ts src/lib/shopify-feed.test.ts src/lib/stock-totals.test.ts src/lib/stock-search.test.ts src/lib/shopify-refresh.test.ts src/lib/shopify-product-image.test.ts src/lib/server-addresses.test.ts src/lib/shopify-status.test.ts src/lib/stock-listing.test.ts src/lib/stock-listing-pdf.test.ts src/lib/listing-email.test.ts src/lib/share-pdf.test.ts src/lib/product-groups.test.ts src/lib/list-stock.test.ts src/lib/showcase.test.ts src/lib/access.test.ts"
+    "test": "tsx --test src/lib/shopify-match.test.ts src/lib/shopify-feed.test.ts src/lib/stock-totals.test.ts src/lib/stock-search.test.ts src/lib/shopify-refresh.test.ts src/lib/shopify-product-image.test.ts src/lib/server-addresses.test.ts src/lib/shopify-status.test.ts src/lib/stock-listing.test.ts src/lib/stock-listing-pdf.test.ts src/lib/listing-email.test.ts src/lib/share-pdf.test.ts src/lib/product-groups.test.ts src/lib/list-stock.test.ts src/lib/shopify-catalog-filter.test.ts src/lib/showcase.test.ts src/lib/access.test.ts"
   },
   "engines": {
     "node": ">=20.9.0"

@@ -207,6 +207,7 @@ const storeSelect = `
          COALESCE(SUM(st.quantity * p.retail_price), 0) AS retail_value
   FROM stores s
   LEFT JOIN store_stock st ON st.store_id = s.id AND (${stockedShelf})
+    AND EXISTS (SELECT 1 FROM products included WHERE included.id = st.product_id AND included.catalog_excluded = 0)
   LEFT JOIN products p ON p.id = st.product_id
 `;
 
@@ -393,7 +394,7 @@ export function listProducts(): Product[] {
              COUNT(st.id) AS store_count
       FROM products p
       LEFT JOIN store_stock st ON st.product_id = p.id AND (${stockedShelf})
-      WHERE TRIM(p.name) != ''
+      WHERE TRIM(p.name) != '' AND p.catalog_excluded = 0
       GROUP BY p.id
       ORDER BY p.product_group COLLATE NOCASE, p.name COLLATE NOCASE
     `)
@@ -406,7 +407,7 @@ function listCatalogShowcaseRows(): ShowcaseCatalogRow[] {
     .prepare(
       `SELECT id, product_group, name, description, retail_price, image_url, image_name
        FROM products
-       WHERE TRIM(name) != ''
+       WHERE TRIM(name) != '' AND catalog_excluded = 0
        ORDER BY id`,
     )
     .all() as Array<{
@@ -546,7 +547,7 @@ export function listStock(storeId: number): StockLine[] {
       FROM store_stock st
       JOIN products p ON p.id = st.product_id
       JOIN stores s ON s.id = st.store_id
-      WHERE st.store_id = ? AND (${stockedShelf})
+      WHERE st.store_id = ? AND (${stockedShelf}) AND p.catalog_excluded = 0
       ORDER BY p.product_group COLLATE NOCASE, p.name COLLATE NOCASE
     `)
     .all(storeId) as StockRow[];
@@ -684,6 +685,10 @@ function rethrowStockError(error: unknown): never {
     throw new HttpError("The quantity on hand changed while this was saving. Refresh and try again.", 409);
   }
   throw error;
+}
+
+export function setCatalogExcluded(productId: number, excluded: boolean) {
+  getDb().prepare(`UPDATE products SET catalog_excluded = ? WHERE id = ?`).run(excluded ? 1 : 0, productId);
 }
 
 export function findProductIdForShopify(ref: {

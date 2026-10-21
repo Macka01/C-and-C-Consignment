@@ -98,6 +98,7 @@ type GraphqlVariant = {
   product: {
     title: string;
     productType: string | null;
+    status: string | null;
     description: string | null;
     featuredImage: GraphqlImage;
   } | null;
@@ -121,7 +122,7 @@ type GraphqlLocation = {
 const VARIANT_FIELDS = `
   id title displayName sku price
   image { url }
-  product { title productType description featuredImage { url } }
+  product { title productType status description featuredImage { url } }
 `;
 
 const LOCATION_QUERY = `
@@ -317,6 +318,7 @@ function refFromVariant(variant: GraphqlVariant | undefined, sku: string | null)
       sku ?? variant?.sku,
     ),
     productGroup: shopifyProductGroup(variant?.product?.productType),
+    productStatus: variant?.product?.status ?? null,
     description: variant?.product?.description?.trim() || "",
     retailPrice: money(variant?.price) ?? 0,
     imageUrl: shopifyImageUrl(variant),
@@ -334,6 +336,7 @@ function itemsFromLevels(nodes: GraphqlLocation["inventoryLevels"]["nodes"]) {
       variantTitle: variant?.title ?? null,
       displayName: variant?.displayName ?? null,
       productType: variant?.product?.productType ?? null,
+      productStatus: variant?.product?.status ?? null,
       description: variant?.product?.description ?? null,
       price: money(variant?.price),
       onHand: quantityOnHand(node.quantities),

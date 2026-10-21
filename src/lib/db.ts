@@ -162,6 +162,7 @@ function migrate(db: Database.Database) {
   column(db, "products", "image_url", "image_url TEXT");
   column(db, "products", "image_name", "image_name TEXT");
   column(db, "products", "image_mime", "image_mime TEXT");
+  column(db, "products", "catalog_excluded", "catalog_excluded INTEGER NOT NULL DEFAULT 0");
   column(db, "movements", "shopify_gid", "shopify_gid TEXT");
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_movements_shopify_gid ON movements(shopify_gid) WHERE shopify_gid IS NOT NULL`);
   db.exec(`

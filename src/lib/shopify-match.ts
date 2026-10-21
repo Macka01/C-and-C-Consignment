@@ -9,6 +9,7 @@ export type ShopifyInventoryItem = {
   variantTitle: string | null;
   displayName: string | null;
   productType: string | null;
+  productStatus?: string | null;
   description: string | null;
   price: number | null;
   onHand: number;
@@ -20,6 +21,7 @@ export type ShopifyProductRef = {
   sku: string | null;
   name: string;
   productGroup: string;
+  productStatus?: string | null;
   description: string;
   retailPrice: number;
   imageUrl: string | null;
@@ -86,7 +88,7 @@ export function catalogImageJobs(
   for (const location of locations) {
     for (const item of location.items) {
       const ref = productRefFromItem(item);
-      if (!ref.name || !ref.imageUrl) continue;
+      if (!shopifyCatalogIncluded(ref) || !ref.name || !ref.imageUrl) continue;
       const existing = findProductId(ref);
       if (existing) jobs.push({ productId: existing, url: ref.imageUrl });
     }
@@ -97,6 +99,22 @@ export function catalogImageJobs(
 /** Tracker product group is Shopify's product type. Empty type keeps a local group later. */
 export function shopifyProductGroup(productType: string | null | undefined) {
   return productType?.trim() ?? "";
+}
+
+/**
+ * Shopify catalog pull skips a discontinued product type and a draft product.
+ * Archived and active products stay. A blank status is not a draft.
+ */
+export function shopifyCatalogIncluded(input: {
+  productType?: string | null;
+  productGroup?: string | null;
+  productStatus?: string | null;
+}) {
+  const type = (input.productType ?? input.productGroup ?? "").trim();
+  if (/^discontinued$/i.test(type)) return false;
+  const status = (input.productStatus ?? "").trim();
+  if (/^draft$/i.test(status)) return false;
+  return true;
 }
 
 export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRef {
@@ -112,6 +130,7 @@ export function productRefFromItem(item: ShopifyInventoryItem): ShopifyProductRe
       item.sku,
     ),
     productGroup: shopifyProductGroup(item.productType),
+    productStatus: item.productStatus ?? null,
     description: item.description?.trim() || "",
     retailPrice: item.price ?? 0,
     imageUrl: item.imageUrl ?? null,
@@ -309,6 +328,7 @@ export function salesFromOrders(orders: ShopifyOrderLine[]): ShopifySaleEvent[] 
   const sales: ShopifySaleEvent[] = [];
   for (const line of orders) {
     if (line.cancelled || !line.locationName || line.quantity <= 0) continue;
+    if (!shopifyCatalogIncluded(line.product)) continue;
     sales.push({
       gid: line.id,
       locationName: line.locationName,
@@ -327,6 +347,7 @@ export function movementsFromTransfers(transfers: ShopifyTransferLine[]): Shopif
   for (const line of transfers) {
     const status = line.status.toLowerCase();
     if (status.includes("cancel") || status === "draft" || line.quantity <= 0) continue;
+    if (!shopifyCatalogIncluded(line.product)) continue;
     const date = day(line.occurredOn);
     const origin = line.originName.trim();
     const destination = line.destinationName.trim();
