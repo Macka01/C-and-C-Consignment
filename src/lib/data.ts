@@ -307,12 +307,72 @@ function unlinkStored(name: string) {
   fs.rmSync(path.join(/*turbopackIgnore: true*/ reportsDir(), name), { force: true });
 }
 
+/** Products whose shelf rows and history exist only at this store. */
+function exclusiveStoreProductIds(db: ReturnType<typeof getDb>, storeId: number) {
+  const rows = db
+    .prepare(
+      `
+      SELECT p.id
+      FROM products p
+      WHERE (
+        EXISTS (SELECT 1 FROM store_stock st WHERE st.product_id = p.id AND st.store_id = ?)
+        OR EXISTS (SELECT 1 FROM movements m WHERE m.product_id = p.id AND m.store_id = ?)
+      )
+      AND NOT EXISTS (SELECT 1 FROM store_stock st WHERE st.product_id = p.id AND st.store_id != ?)
+      AND NOT EXISTS (SELECT 1 FROM movements m WHERE m.product_id = p.id AND m.store_id != ?)
+    `,
+    )
+    .all(storeId, storeId, storeId, storeId) as { id: number }[];
+  return rows.map((row) => row.id);
+}
+
+function storedProductImageNames(db: ReturnType<typeof getDb>, productIds: number[]) {
+  if (!productIds.length) return [];
+  const marks = productIds.map(() => "?").join(", ");
+  const photos = db
+    .prepare(`SELECT stored_name FROM product_photos WHERE product_id IN (${marks})`)
+    .all(...productIds) as { stored_name: string }[];
+  const covers = db
+    .prepare(
+      `SELECT image_name FROM products WHERE id IN (${marks}) AND image_name IS NOT NULL AND TRIM(image_name) != ''`,
+    )
+    .all(...productIds) as { image_name: string }[];
+  return [...new Set([...photos.map((photo) => photo.stored_name), ...covers.map((cover) => cover.image_name)])];
+}
+
+function unlinkProductImage(name: string) {
+  const safe = safeImageFileName(name);
+  if (!safe) return;
+  const stillUsed = getDb()
+    .prepare(
+      `
+      SELECT 1 AS ok FROM products WHERE image_name = ?
+      UNION ALL
+      SELECT 1 FROM product_photos WHERE stored_name = ?
+      LIMIT 1
+    `,
+    )
+    .get(safe, safe);
+  if (stillUsed) return;
+  fs.rmSync(productImagePath(safe), { force: true });
+}
+
 export function deleteStore(id: number) {
   requireStore(id);
   const db = getDb();
   const files = db.prepare(`SELECT stored_name FROM reports WHERE store_id = ?`).all(id) as { stored_name: string }[];
-  db.prepare(`DELETE FROM stores WHERE id = ?`).run(id);
+  const productIds = exclusiveStoreProductIds(db, id);
+  const imageNames = storedProductImageNames(db, productIds);
+  const remove = db.transaction(() => {
+    db.prepare(`DELETE FROM stores WHERE id = ?`).run(id);
+    if (productIds.length) {
+      const marks = productIds.map(() => "?").join(", ");
+      db.prepare(`DELETE FROM products WHERE id IN (${marks})`).run(...productIds);
+    }
+  });
+  remove();
   for (const file of files) unlinkStored(file.stored_name);
+  for (const name of imageNames) unlinkProductImage(name);
 }
 
 let defaultTitlesScrubbed = false;
@@ -507,29 +567,6 @@ export function updateProduct(id: number, input: ProductInput): Product {
     `)
     .run(input.productGroup, input.name, input.description, input.retailPrice, new Date().toISOString(), id);
   return getProduct(id)!;
-}
-
-export function deleteProduct(id: number) {
-  requireProduct(id);
-  const db = getDb();
-  const used = db
-    .prepare(`
-      SELECT
-        (SELECT COUNT(*) FROM store_stock WHERE product_id = ?) +
-        (SELECT COUNT(*) FROM movements WHERE product_id = ?) AS n
-    `)
-    .get(id, id) as { n: number };
-  if (used.n > 0) {
-    throw new HttpError("This product is on a shelf or already has history. Edit it instead of deleting it.", 409);
-  }
-  const photos = db
-    .prepare(`SELECT stored_name FROM product_photos WHERE product_id = ?`)
-    .all(id) as { stored_name: string }[];
-  const image = getProductImageRecord(id);
-  db.prepare(`DELETE FROM products WHERE id = ?`).run(id);
-  const names = new Set(photos.map((photo) => photo.stored_name));
-  if (image?.imageName) names.add(image.imageName);
-  for (const name of names) fs.rmSync(productImagePath(name), { force: true });
 }
 
 export function purgeUnstockedShelves() {

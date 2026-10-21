@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "cn";
 import { Input } from "@/components/ui/input";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "@/components/feedback";
 import { ProductFormDialog } from "@/components/product-form-dialog";
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MovementList } from "@/components/movement-list";
 import { ShopifyMatchNote, ShopifyStockNote } from "@/components/shopify-qty";
 import { StockMovementSummary } from "@/components/stock-summary";
@@ -20,10 +19,8 @@ import type { ProductDetail, StockLine } from "@/lib/types";
 
 export function ProductDetailPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const detail = useResource<ProductDetail>(params.id ? `/api/products/${params.id}` : null, { shopify: true });
   const [editing, setEditing] = useState(false);
-  const [removing, setRemoving] = useState(false);
   const product = detail.data?.product;
 
   return (
@@ -46,9 +43,6 @@ export function ProductDetailPage() {
                 </Link>
                 <Button variant="outline" className="h-10" onClick={() => setEditing(true)}>
                   Edit product
-                </Button>
-                <Button variant="ghost" className="h-10" onClick={() => setRemoving(true)}>
-                  Delete
                 </Button>
               </>
             }
@@ -101,18 +95,6 @@ export function ProductDetailPage() {
           </section>
 
           <ProductFormDialog open={editing} onOpenChange={setEditing} initial={product} onSaved={() => void detail.reload()} />
-          <ConfirmDialog
-            open={removing}
-            onOpenChange={setRemoving}
-            title={`Delete ${product.name}?`}
-            body="A product that is already on a shelf, or that has transfers and sales, has to stay so the history still makes sense. Edit it instead."
-            confirmLabel="Delete product"
-            onConfirm={async () => {
-              await api(`/api/products/${product.id}`, { method: "DELETE" });
-              toast.success("Product deleted");
-              router.push("/products");
-            }}
-          />
         </>
       ) : null}
     </div>
