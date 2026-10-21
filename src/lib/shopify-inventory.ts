@@ -4,6 +4,7 @@ import { getAppMeta, setAppMeta } from "@/lib/app-meta";
 import {
   compareStockToShopify,
   locationNameFromOrder,
+  locationStockForVariant,
   shopifyCatalogName,
   shopifyProductGroup,
   shopifyProductName,
@@ -22,12 +23,12 @@ import {
   SHOPIFY_PULL_TIMEOUT_MS,
   type ShopifySyncOptions,
 } from "@/lib/shopify-refresh";
-import { listShopifyCatalogVariants, listShopifyProductsMissingImages } from "@/lib/data";
+import { listProducts, listShopifyCatalogVariants, listShopifyProductsMissingImages } from "@/lib/data";
 import { cacheShopifyProductImages, type ProductImageJob } from "@/lib/shopify-image-cache";
 import { applyShopifyFeed, type ShopifyFeed } from "@/lib/shopify-sync";
 import type { ShopifyOrderLine, ShopifyTransferLine } from "@/lib/shopify-match";
 import type { ShopifyActivity } from "@/lib/shopify-status";
-import type { ProductDetail, ShopifyStockStatus, StockLine, StoreDetail } from "@/lib/types";
+import type { Product, ProductDetail, ShopifyStockStatus, StockLine, StoreDetail } from "@/lib/types";
 
 const API_VERSION = "2025-10";
 const FRESH_MS = 5 * 60 * 1000;
@@ -712,17 +713,41 @@ export async function syncFromShopify(options?: ShopifySyncOptions): Promise<Sho
   return { configured: shopifyConfigured(), error, warning };
 }
 
+function variantIdByProductId() {
+  return new Map(listShopifyCatalogVariants().map((row) => [row.id, row.variantId]));
+}
+
+function withLocationStock(product: Product, locations: ShopifyLocationInventory[] | null, variants: Map<number, string>): Product {
+  return {
+    ...product,
+    locationStock: locationStockForVariant(variants.get(product.id), locations),
+  };
+}
+
+/** Catalog list: saved products plus on-hand at every Shopify location, including 63 Ferndale St. */
+export async function listCatalogWithLocationStock(options?: ShopifySyncOptions): Promise<Product[]> {
+  const { feed } = await loadFeed(options);
+  const variants = variantIdByProductId();
+  return listProducts().map((product) => withLocationStock(product, feed?.locations ?? null, variants));
+}
+
 export async function withShopifyStock<T extends StoreDetail | ProductDetail>(
   load: () => T,
   options?: ShopifySyncOptions,
 ): Promise<T> {
   const { feed, error, warning } = await loadFeed(options);
   const detail = load();
-  return {
-    ...detail,
-    shopify: { configured: shopifyConfigured(), error, warning },
-    stock: detail.stock
-      .map((line) => attachLine(line, feed?.locations ?? null))
-      .filter((line) => stockLineOnShelf(line)), // store_stock.quantity > 0 or a sale/transfer; leftover qty-0 rows stay off
-  };
+  const stock = detail.stock
+    .map((line) => attachLine(line, feed?.locations ?? null))
+    .filter((line) => stockLineOnShelf(line));
+  const shopify = { configured: shopifyConfigured(), error, warning };
+  if ("product" in detail) {
+    return {
+      ...detail,
+      shopify,
+      stock,
+      product: withLocationStock(detail.product, feed?.locations ?? null, variantIdByProductId()),
+    };
+  }
+  return { ...detail, shopify, stock };
 }

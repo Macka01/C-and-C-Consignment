@@ -234,6 +234,35 @@ export function stockLineOnShelf(line: {
   return belongsOnStoreShelf(line.quantity, shelfMovementCount(line));
 }
 
+export type LocationOnHand = {
+  locationName: string;
+  quantity: number;
+};
+
+/**
+ * On-hand at every Shopify location for one catalog variant, including the warehouse
+ * at 63 Ferndale St. Locations with nothing on hand are left off. This does not create stores.
+ */
+export function locationStockForVariant(
+  variantId: string | null | undefined,
+  locations: ShopifyLocationInventory[] | null | undefined,
+): LocationOnHand[] {
+  const needle = variantId?.trim() ?? "";
+  if (!needle || !locations?.length) return [];
+  const rows: LocationOnHand[] = [];
+  for (const location of locations) {
+    const item = location.items.find((entry) => entry.variantId === needle);
+    if (!item) continue;
+    const quantity = onHandCount(item.onHand);
+    if (quantity <= 0) continue;
+    const locationName = location.locationName.trim();
+    if (!locationName) continue;
+    rows.push({ locationName, quantity });
+  }
+  rows.sort((a, b) => a.locationName.localeCompare(b.locationName, undefined, { sensitivity: "base" }));
+  return rows;
+}
+
 export function compareStockToShopify(
   line: { storeName?: string; productName: string; consigneeCode: string; quantity: number },
   locations: ShopifyLocationInventory[] | null,

@@ -12,6 +12,12 @@ export type Store = {
   retailValue: number;
 };
 
+/** Shopify location and on-hand quantity. No transfers or sales. */
+export type LocationStock = {
+  locationName: string;
+  quantity: number;
+};
+
 export type Product = {
   id: number;
   productGroup: string;
@@ -21,6 +27,8 @@ export type Product = {
   units: number;
   storeCount: number;
   imageUrl: string | null;
+  /** Every Shopify location with on-hand above zero, including 63 Ferndale St. */
+  locationStock: LocationStock[];
 };
 
 export type ShopifyMatch = "matched" | "no_location" | "no_product" | "unavailable";

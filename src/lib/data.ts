@@ -129,6 +129,7 @@ function mapProduct(row: ProductRow): Product {
     units: row.units ?? 0,
     storeCount: row.store_count ?? 0,
     imageUrl: row.image_name ? publicProductImageUrl(row.id, row.image_name) : null,
+    locationStock: [],
   };
 }
 
