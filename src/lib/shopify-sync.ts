@@ -55,6 +55,20 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
 
   hideDiscontinuedAndDraft(feed);
 
+  // Catalog: every Active named variant at any location, including on-hand 0 (made-to-order).
+  // Do not create store shelves here — shelves still need qty > 0, a movement, or a consignee code.
+  for (const location of feed.locations) {
+    for (const item of location.items) {
+      const ref = productRefFromItem(item);
+      if (!shopifyCatalogIncluded(ref) || !ref.name) continue;
+      const product = ensureShopifyProduct(ref);
+      if (!product) continue;
+      setCatalogExcluded(product.id, false);
+      if (product.created) createdProducts += 1;
+      rememberImage(product.id, ref.imageUrl);
+    }
+  }
+
   for (const store of stores) {
     const location = matchShopifyLocation(store.name, feed.locations);
     if (!location) continue;
@@ -68,7 +82,6 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
       const product = ensureShopifyProduct(ref);
       if (!product) continue;
       setCatalogExcluded(product.id, false);
-      if (product.created) createdProducts += 1;
       rememberImage(product.id, ref.imageUrl);
       ensureShopifyStock(store.id, product.id, qty);
     }
@@ -128,8 +141,7 @@ export function applyShopifyFeed(feed: ShopifyFeed): ShopifySyncResult {
     dropShelvesShopifyDoesNotStock(store.id, location);
   }
 
-  // A product can sit in the catalog at zero on-hand. Those rows were skipped above, so their
-  // Shopify photo was never saved. Attach a photo for any catalog product the feed still names.
+  // Photos for catalog rows that already existed before this pull (including shelves now at zero).
   for (const job of catalogImageJobs(feed.locations, findProductIdForShopify)) {
     rememberImage(job.productId, job.url);
   }

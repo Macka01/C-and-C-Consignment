@@ -153,4 +153,89 @@ describe("shopify catalog filter", () => {
       6,
     );
   });
+
+  it("puts Active zero-qty variants in the catalog without a store shelf", async () => {
+    const { getDb } = await import("./db.ts");
+    const { applyShopifyFeed } = await import("./shopify-sync.ts");
+    const { listProducts, listStock } = await import("./data.ts");
+    const db = getDb();
+    const now = "2026-10-22T00:00:00.000Z";
+    const storeId = Number(
+      db
+        .prepare(
+          `INSERT INTO stores (name, address, phone, contact_name, rent_amount, commission_rate, created_at, updated_at)
+           VALUES ('Harbour Linen', '', '', '', NULL, NULL, ?, ?)`,
+        )
+        .run(now, now).lastInsertRowid,
+    );
+
+    applyShopifyFeed({
+      locations: [
+        {
+          locationId: "gid://shopify/Location/warehouse",
+          locationName: "63 Ferndale St",
+          items: [
+            {
+              variantId: "gid://shopify/ProductVariant/heart-large",
+              sku: "HEART-LG",
+              title: 'Handmade Ceramic Heart - "our grandchildren"',
+              variantTitle: "Large",
+              displayName: 'Handmade Ceramic Heart - "our grandchildren" - Large',
+              productType: "Handmade",
+              productStatus: "ACTIVE",
+              description: null,
+              price: 28,
+              onHand: 0,
+              imageUrl: "https://cdn.shopify.com/heart-large.jpg",
+            },
+          ],
+        },
+        {
+          locationId: "gid://shopify/Location/1",
+          locationName: "Harbour Linen",
+          items: [
+            item("heart-small", "HEART-SM", 'Handmade Ceramic Heart - "our grandchildren" - Small', "Handmade", "ACTIVE", 2),
+            {
+              variantId: "gid://shopify/ProductVariant/heart-large",
+              sku: "HEART-LG",
+              title: 'Handmade Ceramic Heart - "our grandchildren"',
+              variantTitle: "Large",
+              displayName: 'Handmade Ceramic Heart - "our grandchildren" - Large',
+              productType: "Handmade",
+              productStatus: "ACTIVE",
+              description: null,
+              price: 28,
+              onHand: 0,
+            },
+          ],
+        },
+      ],
+      orders: [],
+      transfers: [],
+    });
+
+    const catalog = listProducts().map((product) => product.name).sort();
+    assert.ok(
+      catalog.some((name) => name.includes("Large")),
+      `expected Large in catalog, got ${JSON.stringify(catalog)}`,
+    );
+    assert.ok(
+      catalog.some((name) => name.includes("Small")),
+      `expected Small in catalog, got ${JSON.stringify(catalog)}`,
+    );
+    assert.deepEqual(
+      listStock(storeId).map((line) => line.productName),
+      ['Handmade Ceramic Heart - "our grandchildren" - Small'],
+    );
+    const largeShelves = (
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM store_stock st
+           JOIN products p ON p.id = st.product_id
+           WHERE st.store_id = ? AND p.shopify_variant_id = 'gid://shopify/ProductVariant/heart-large'`,
+        )
+        .get(storeId) as { n: number }
+    ).n;
+    assert.equal(largeShelves, 0);
+  });
 });
