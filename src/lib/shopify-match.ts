@@ -204,14 +204,19 @@ export function onHandCount(value: number) {
   return Math.max(0, Math.round(qty));
 }
 
-/** Original rule: qty > 0 at this store, or a sale/transfer already happened there. */
-export function shelfBelongsAtStore(quantity: number, shopifyMovementCount: number) {
-  return belongsOnStoreShelf(quantity, shopifyMovementCount);
+/** Qty > 0, a sale/transfer, or a saved consignee code (made-to-order at that store). */
+export function shelfBelongsAtStore(
+  quantity: number,
+  shopifyMovementCount: number,
+  consigneeCode: string | null | undefined = "",
+) {
+  return belongsOnStoreShelf(quantity, shopifyMovementCount, consigneeCode);
 }
 
 /**
  * Shopify inventoryLevels often returns 0 at locations that never held the item.
- * That empty level is not stock. Only on-hand > 0, or a sale/transfer, keeps the row.
+ * That empty level is not stock. Only on-hand > 0, or a sale/transfer, keeps the row
+ * from the Shopify match path (a saved consignee code is protected separately).
  */
 export function staysOnMatchedShelf(onHand: number | null, shopifyMovementCount: number) {
   if (shopifyMovementCount > 0) return true;
@@ -222,7 +227,7 @@ export function shelfMovementCount(line: { transferredIn: number; transferredOut
   return line.transferredIn + line.transferredOut + line.sales;
 }
 
-/** Stock tab, listing page, and PDF: store_stock.quantity > 0, or a sale/transfer there. */
+/** Stock tab, listing page, and PDF: qty > 0, a sale/transfer, or a saved consignee code. */
 export function stockLineOnShelf(line: {
   quantity: number;
   shopifyQtyOnHand: number | null;
@@ -230,8 +235,9 @@ export function stockLineOnShelf(line: {
   transferredIn: number;
   transferredOut: number;
   sales: number;
+  consigneeCode?: string | null;
 }) {
-  return belongsOnStoreShelf(line.quantity, shelfMovementCount(line));
+  return belongsOnStoreShelf(line.quantity, shelfMovementCount(line), line.consigneeCode);
 }
 
 export type LocationOnHand = {

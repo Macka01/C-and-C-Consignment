@@ -168,6 +168,29 @@ describe("consignment stock listing", () => {
     assert.equal(listing.rows[0]?.consigneeCode, "");
   });
 
+  it("includes made-to-order lines with a consignee code at quantity 0", () => {
+    const listing = buildStockListing("Harbour Linen", "2026-10-22", [
+      line({
+        productName: "Custom platter",
+        productGroup: "Handmade",
+        consigneeCode: "HLB-MTO-1",
+        quantity: 0,
+        shopifyQtyOnHand: 0,
+      }),
+      line({
+        productName: "Leftover uncoded",
+        productGroup: "Handmade",
+        consigneeCode: "",
+        quantity: 0,
+        shopifyQtyOnHand: 0,
+      }),
+    ]);
+    assert.deepEqual(
+      listing.rows.map((row) => [row.productName, row.consigneeCode, row.quantityOnHand]),
+      [["Custom platter", "HLB-MTO-1", 0]],
+    );
+  });
+
   it("strips characters Helvetica cannot print", () => {
     assert.equal(pdfSafeText("Flax Mug — Khaki"), "Flax Mug - Khaki");
     assert.equal(pdfSafeText("smart ‘quotes’"), "smart 'quotes'");

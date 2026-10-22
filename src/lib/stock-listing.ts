@@ -153,7 +153,11 @@ export function buildStockListing(
   const mapped = stock
     .filter(
       (line) =>
-        belongsOnStoreShelf(line.quantity, line.transferredIn + line.transferredOut + line.sales) &&
+        belongsOnStoreShelf(
+          line.quantity,
+          line.transferredIn + line.transferredOut + line.sales,
+          line.consigneeCode,
+        ) &&
         pdfSafeText(line.productName).trim(),
     )
     .map((line) => ({

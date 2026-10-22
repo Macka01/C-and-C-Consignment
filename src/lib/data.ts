@@ -574,7 +574,7 @@ export function purgeUnstockedShelves() {
   getDb().prepare(DELETE_UNSTOCKED_SHELF_SQL).run();
 }
 
-/** Stock tab, listing page, and PDF: qty > 0 at this store, or a sale/transfer there. */
+/** Stock tab, listing page, and PDF: qty > 0, a sale/transfer, or a saved consignee code. */
 export function listStock(storeId: number): StockLine[] {
   purgeUnstockedShelves();
   const rows = getDb()
@@ -657,12 +657,25 @@ export function placeProduct(input: {
 
 export function updateConsigneeCode(storeId: number, productId: number, consigneeCode: string) {
   requireStore(storeId);
-  const info = getDb()
-    .prepare(`UPDATE store_stock SET consignee_code = ? WHERE store_id = ? AND product_id = ?`)
-    .run(consigneeCode, storeId, productId);
-  if (info.changes === 0) {
+  requireProduct(productId);
+  const code = consigneeCode.trim();
+  const db = getDb();
+  const existing = db
+    .prepare(`SELECT id FROM store_stock WHERE store_id = ? AND product_id = ?`)
+    .get(storeId, productId) as { id: number } | undefined;
+  if (existing) {
+    db.prepare(`UPDATE store_stock SET consignee_code = ? WHERE id = ?`).run(code, existing.id);
+    return;
+  }
+  if (!code) {
     throw new HttpError("That product is not on the shelf at this store.", 404);
   }
+  // Made-to-order: saving a shop code stipulates availability at qty 0.
+  db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (?, ?, ?, 0)`).run(
+    storeId,
+    productId,
+    code,
+  );
 }
 
 type MovementInput = {
@@ -923,8 +936,17 @@ export function storeShelfProductIds(storeId: number) {
   return rows.map((row) => row.product_id);
 }
 
+/** Never delete a store_stock row that has a consignee code (made-to-order / shop code). */
 export function removeShelf(storeId: number, productId: number) {
-  getDb().prepare(`DELETE FROM store_stock WHERE store_id = ? AND product_id = ?`).run(storeId, productId);
+  getDb()
+    .prepare(
+      `
+      DELETE FROM store_stock
+      WHERE store_id = ? AND product_id = ?
+        AND TRIM(COALESCE(consignee_code, '')) = ''
+    `,
+    )
+    .run(storeId, productId);
 }
 
 export function ensureShopifyStock(storeId: number, productId: number, quantity: number) {

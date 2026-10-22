@@ -242,6 +242,7 @@ describe("shopify inventory match", () => {
       transferredIn: 0,
       transferredOut: 0,
       sales: 0,
+      consigneeCode: "",
     };
     assert.equal(stockLineOnShelf({ ...base, quantity: 3 }), true);
     assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyQtyOnHand: 0 }), false);
@@ -251,6 +252,7 @@ describe("shopify inventory match", () => {
     assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyMatch: "no_product", transferredIn: 4 }), true);
     assert.equal(stockLineOnShelf({ ...base, quantity: 3, shopifyMatch: "unavailable" }), true);
     assert.equal(stockLineOnShelf({ ...base, quantity: 0, shopifyMatch: "unavailable" }), false);
+    assert.equal(stockLineOnShelf({ ...base, quantity: 0, consigneeCode: "HLB-MTO" }), true);
   });
 
   it("leaves discontinued product types and draft products out of the catalog pull", () => {

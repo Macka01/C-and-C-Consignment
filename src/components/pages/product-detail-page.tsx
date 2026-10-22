@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
@@ -16,13 +16,22 @@ import { StockMovementSummary } from "@/components/stock-summary";
 import { api } from "@/lib/api-client";
 import { useResource } from "@/lib/use-resource";
 import { formatMoney } from "@/lib/format";
-import type { ProductDetail, StockLine } from "@/lib/types";
+import type { ProductDetail, StockLine, Store } from "@/lib/types";
 
 export function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const detail = useResource<ProductDetail>(params.id ? `/api/products/${params.id}` : null, { shopify: true });
+  const stores = useResource<Store[]>("/api/stores");
   const [editing, setEditing] = useState(false);
   const product = detail.data?.product;
+  const stockedStoreIds = useMemo(
+    () => new Set((detail.data?.stock ?? []).map((line) => line.storeId)),
+    [detail.data?.stock],
+  );
+  const availableStores = useMemo(
+    () => (stores.data ?? []).filter((store) => !stockedStoreIds.has(store.id)),
+    [stores.data, stockedStoreIds],
+  );
 
   return (
     <div className="grid gap-6">
@@ -67,10 +76,14 @@ export function ProductDetailPage() {
             <h2 className="font-heading text-2xl">Stock by store</h2>
             <p className="max-w-xl text-sm text-muted-foreground">
               Consignee shops only: transferred in, transferred out, sales, other, and boxed on-hand. History is below.
+              Save a consignee code to list made-to-order items at a store with no stock yet.
             </p>
             <ShopifyStockNote shopify={detail.data.shopify} />
             {detail.data.stock.length === 0 ? (
-              <EmptyBlock title="Not at a store yet" body="Shopify will place it here when it has quantity at a matching location." />
+              <EmptyBlock
+                title="Not at a store yet"
+                body="Shopify will place it here when it has quantity at a matching location. Or save a consignee code below for made-to-order."
+              />
             ) : (
               <ul className="grid gap-3">
                 {detail.data.stock.map((line) => (
@@ -91,6 +104,14 @@ export function ProductDetailPage() {
                 ))}
               </ul>
             )}
+            {availableStores.length > 0 ? (
+              <MarkAvailableAtStore
+                key={availableStores.map((store) => store.id).join("-")}
+                productId={product.id}
+                stores={availableStores}
+                onChanged={() => void detail.reload()}
+              />
+            ) : null}
           </section>
 
           <section className="grid gap-3">
@@ -152,6 +173,90 @@ function ConsigneeCodeField({ line, onChanged }: { line: StockLine; onChanged: (
         {saving ? "Saving…" : "Save code"}
       </Button>
       {error ? <p className="sm:col-span-2 text-sm text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
+function MarkAvailableAtStore({
+  productId,
+  stores,
+  onChanged,
+}: {
+  productId: number;
+  stores: Store[];
+  onChanged: () => void;
+}) {
+  const [storeId, setStoreId] = useState(String(stores[0]?.id ?? ""));
+  const [code, setCode] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    const trimmed = code.trim();
+    if (!storeId || !trimmed) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api("/api/stock", {
+        method: "PATCH",
+        body: JSON.stringify({ storeId: Number(storeId), productId, consigneeCode: trimmed }),
+      });
+      toast.success("Available at store");
+      setCode("");
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not mark this product available.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+      <h3 className="font-medium">Made to order at a store</h3>
+      <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+        Save that shop’s product code to put this on their Stock tab and Consignment Stock Listing at quantity 0.
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <div className="grid gap-1.5">
+          <label className="text-sm font-medium" htmlFor={`mto-store-${productId}`}>
+            Store
+          </label>
+          <select
+            id={`mto-store-${productId}`}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            value={storeId}
+            onChange={(event) => setStoreId(event.target.value)}
+          >
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid gap-1.5">
+          <label className="text-sm font-medium" htmlFor={`mto-code-${productId}`}>
+            Consignee code
+          </label>
+          <Input
+            id={`mto-code-${productId}`}
+            className="h-10"
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            placeholder="Store’s own code"
+          />
+        </div>
+        <Button
+          variant="outline"
+          className="h-10"
+          disabled={!storeId || !code.trim() || saving}
+          onClick={() => void save()}
+        >
+          {saving ? "Saving…" : "Save code"}
+        </Button>
+        {error ? <p className="sm:col-span-3 text-sm text-destructive">{error}</p> : null}
+      </div>
     </div>
   );
 }

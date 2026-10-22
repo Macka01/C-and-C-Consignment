@@ -78,10 +78,25 @@ function seedLoveLocalLeftovers(db: Database.Database) {
 }
 
 describe("store shelf membership SQL", () => {
-  it("is qty > 0 at that store, or a sale/transfer there", () => {
+  it("is qty > 0, a sale/transfer, or a saved consignee code", () => {
     assert.equal(belongsOnStoreShelf(3, 0), true);
     assert.equal(belongsOnStoreShelf(0, 1), true);
     assert.equal(belongsOnStoreShelf(0, 0), false);
+    assert.equal(belongsOnStoreShelf(0, 0, ""), false);
+    assert.equal(belongsOnStoreShelf(0, 0, "  "), false);
+    assert.equal(belongsOnStoreShelf(0, 0, "HLB-MTO"), true);
+    assert.equal(belongsOnStoreShelf(0, 0, "  4220  "), true);
+  });
+
+  it("lists a coded qty-0 made-to-order row with no movements", () => {
+    const db = new Database(":memory:");
+    seedLoveLocalLeftovers(db);
+    db.prepare(`INSERT INTO products (id, product_group, name) VALUES (9, 'Bowl', 'Made to order dish')`).run();
+    db.prepare(`INSERT INTO store_stock (store_id, product_id, consignee_code, quantity) VALUES (1, 9, 'MTO-4220', 0)`).run();
+    const rows = listingSql(db, 1);
+    assert.ok(
+      rows.some((row) => row.product_name === "Made to order dish" && row.consignee_code === "MTO-4220" && row.quantity === 0),
+    );
   });
 
   it("does not list leftover qty-0 Love Local inventory-level rows", () => {
@@ -224,6 +239,43 @@ describe("listStock leftover Love Local rows", () => {
         ["Handmade Ceramic Trinket Dish - Hearts - Sage", "4221", 3],
         ["Handmade Ceramic Gift Tag - thank you", "4234", 0],
       ],
+    );
+  });
+
+  it("lists made-to-order after saving a consignee code at qty 0", async () => {
+    const { getDb } = await import("./db.ts");
+    const { listStock, updateConsigneeCode, removeShelf } = await import("./data.ts");
+    const { buildStockListing } = await import("./stock-listing.ts");
+    const db = getDb();
+    const now = "2026-10-22T00:00:00.000Z";
+    db.prepare(
+      `INSERT INTO stores (name, address, phone, contact_name, rent_amount, commission_rate, created_at, updated_at)
+       VALUES ('Harbour Linen', '', '', '', NULL, NULL, ?, ?)`,
+    ).run(now, now);
+    const storeId = Number(db.prepare(`SELECT id FROM stores WHERE name = 'Harbour Linen'`).get()?.id);
+    db.prepare(
+      `INSERT INTO products (product_group, name, description, retail_price, created_at, updated_at)
+       VALUES ('Handmade', 'Custom platter', '', 45, ?, ?)`,
+    ).run(now, now);
+    const productId = Number(db.prepare(`SELECT id FROM products WHERE name = 'Custom platter'`).get()?.id);
+
+    updateConsigneeCode(storeId, productId, "HLB-MTO-1");
+    removeShelf(storeId, productId);
+
+    const kept = db
+      .prepare(`SELECT consignee_code, quantity FROM store_stock WHERE store_id = ? AND product_id = ?`)
+      .get(storeId, productId) as { consignee_code: string; quantity: number };
+    assert.deepEqual(kept, { consignee_code: "HLB-MTO-1", quantity: 0 });
+
+    const stock = listStock(storeId);
+    assert.deepEqual(
+      stock.map((line) => [line.productName, line.consigneeCode, line.quantity]),
+      [["Custom platter", "HLB-MTO-1", 0]],
+    );
+    const listing = buildStockListing("Harbour Linen", "2026-10-22", stock);
+    assert.deepEqual(
+      listing.rows.map((row) => [row.productName, row.consigneeCode, row.quantityOnHand]),
+      [["Custom platter", "HLB-MTO-1", 0]],
     );
   });
 });
