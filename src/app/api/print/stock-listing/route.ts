@@ -2,7 +2,7 @@ import { HttpError } from "@/lib/errors";
 import { fail, json, live } from "@/lib/handlers";
 import { loadStockListing } from "@/lib/load-stock-listing";
 import { buildStockListingEmail } from "@/lib/listing-email";
-import { stockListingFilename } from "@/lib/stock-listing";
+import { stockListingFilename, stockListingSort } from "@/lib/stock-listing";
 import { buildStockListingPdf } from "@/lib/stock-listing-pdf";
 import { positiveId } from "@/lib/validate";
 
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const raw = url.searchParams.get("storeId");
     if (!raw) throw new HttpError("Choose a store.", 400);
     const storeId = positiveId(raw, "Store");
-    const listing = await loadStockListing(storeId);
+    const listing = await loadStockListing(storeId, stockListingSort(url.searchParams.get("sort")));
     if (url.searchParams.get("format") === "json") {
       return json(listing);
     }

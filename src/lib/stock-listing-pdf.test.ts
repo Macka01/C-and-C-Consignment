@@ -121,4 +121,22 @@ describe("consignment stock listing PDF", () => {
       strings.filter((value) => /^Page \d+ of \d+$/.test(value)).length,
     );
   });
+
+  it("prints consignee-code order without product type headings", async () => {
+    const listing = buildStockListing(
+      "Love Local",
+      "2026-10-20",
+      [
+        line({ productName: "Mug", productGroup: "Tableware", consigneeCode: "MUG-2", quantity: 1 }),
+        line({ productName: "Bowl", productGroup: "Handmade", consigneeCode: "BOWL-1", quantity: 1 }),
+      ],
+      "code",
+    );
+    const pdf = await buildStockListingPdf(listing);
+    const strings = pdfStrings(Buffer.from(pdf));
+    assert.ok(!strings.includes("Tableware"));
+    assert.ok(!strings.includes("Handmade"));
+    assert.ok(strings.indexOf("Bowl") >= 0);
+    assert.ok(strings.indexOf("Bowl") < strings.indexOf("Mug"));
+  });
 });
