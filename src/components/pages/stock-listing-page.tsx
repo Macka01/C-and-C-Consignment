@@ -2,20 +2,34 @@
 
 import { Fragment, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ErrorBlock, LoadingBlock } from "@/components/feedback";
+import { Field, NativeSelect } from "@/components/fields";
 import { formatMoney } from "@/lib/format";
 import { listingEmailHref } from "@/lib/listing-email";
 import { downloadFile, downloadPdf, filenameFromDisposition } from "@/lib/share-pdf";
-import type { StockListing } from "@/lib/stock-listing";
+import { stockListingSort, type StockListing } from "@/lib/stock-listing";
 import { useResource } from "@/lib/use-resource";
 
 export function StockListingPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const storeId = searchParams.get("storeId");
-  const listingHref = storeId ? `/api/print/stock-listing?storeId=${encodeURIComponent(storeId)}` : "";
+  const sort = stockListingSort(searchParams.get("sort"));
+  const listingQuery = new URLSearchParams();
+  if (storeId) listingQuery.set("storeId", storeId);
+  if (sort === "code") listingQuery.set("sort", sort);
+  const listingHref = storeId ? `/api/print/stock-listing?${listingQuery.toString()}` : "";
+
+  function changeSort(value: string) {
+    const next = stockListingSort(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "code") params.set("sort", next);
+    else params.delete("sort");
+    router.replace(`/reports/listing?${params.toString()}`);
+  }
   const listing = useResource<StockListing>(listingHref ? `${listingHref}&format=json` : null, {
     wait: true,
   });
@@ -70,10 +84,24 @@ export function StockListingPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href="/reports" className="text-sm text-muted-foreground hover:text-foreground">
-          Back to Reports
-        </Link>
+      <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
+        <div className="flex flex-wrap items-end gap-4">
+          <Link href="/reports" className="mb-2 text-sm text-muted-foreground hover:text-foreground">
+            Back to Reports
+          </Link>
+          <Field label="Sort" htmlFor="listing-sort">
+            <NativeSelect
+              id="listing-sort"
+              className="w-72"
+              value={sort}
+              disabled={!storeId}
+              onChange={(event) => changeSort(event.target.value)}
+            >
+              <option value="group">Product type</option>
+              <option value="code">Consignee code (ungrouped)</option>
+            </NativeSelect>
+          </Field>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button className="h-10" disabled={!report} onClick={() => window.print()}>
             Print

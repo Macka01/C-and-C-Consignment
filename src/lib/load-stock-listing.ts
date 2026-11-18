@@ -1,7 +1,12 @@
 import { getStoreDetail } from "@/lib/data";
 import { withShopifyStock } from "@/lib/shopify-inventory";
 import type { ShopifySyncOptions } from "@/lib/shopify-refresh";
-import { buildStockListing, calendarDateInSydney, type StockListing } from "@/lib/stock-listing";
+import {
+  buildStockListing,
+  calendarDateInSydney,
+  type StockListing,
+  type StockListingSort,
+} from "@/lib/stock-listing";
 
 /** Same store stock the Stock tab uses: store_stock.quantity > 0 or a sale/transfer at that store. */
 export async function loadStoreStockForListing(storeId: number, options?: ShopifySyncOptions) {
@@ -9,7 +14,7 @@ export async function loadStoreStockForListing(storeId: number, options?: Shopif
 }
 
 /** Page and PDF both build from that Stock tab set. Wait so Shopify on-hand is attached. */
-export async function loadStockListing(storeId: number): Promise<StockListing> {
+export async function loadStockListing(storeId: number, sort: StockListingSort = "group"): Promise<StockListing> {
   const detail = await loadStoreStockForListing(storeId, { wait: true });
-  return buildStockListing(detail.store.name, calendarDateInSydney(), detail.stock);
+  return buildStockListing(detail.store.name, calendarDateInSydney(), detail.stock, sort);
 }

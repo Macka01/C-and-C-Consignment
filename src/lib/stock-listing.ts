@@ -3,6 +3,13 @@ import type { StockLine } from "@/lib/types";
 
 export const STOCK_LISTING_TITLE = "Consignment Stock Listing";
 
+/** `group` keeps Shopify product-type headings. `code` is one list by consignee code. */
+export type StockListingSort = "group" | "code";
+
+export function stockListingSort(value: string | null | undefined): StockListingSort {
+  return value === "code" ? "code" : "group";
+}
+
 export type StockListingRow = {
   productGroup: string;
   productName: string;
@@ -21,6 +28,7 @@ export type StockListing = {
   storeName: string;
   reportDate: string;
   reportDateIso: string;
+  sort: StockListingSort;
   groups: StockListingGroup[];
   rows: StockListingRow[];
   totalQuantity: number;
@@ -145,10 +153,31 @@ function listingQuantity(line: StockLine) {
   return line.shopifyQtyOnHand ?? line.quantity;
 }
 
+function groupedSections(mapped: StockListingRow[]): StockListingGroup[] {
+  const grouped = new Map<string, StockListingRow[]>();
+  for (const row of mapped) {
+    const group = row.productGroup.trim();
+    const list = grouped.get(group) ?? [];
+    list.push(row);
+    grouped.set(group, list);
+  }
+  return [...grouped.entries()]
+    .sort(([left], [right]) => {
+      if (!left && right) return 1;
+      if (left && !right) return -1;
+      return left.localeCompare(right, "en", { sensitivity: "base" });
+    })
+    .map(([group, items]) => ({
+      group,
+      rows: items.sort(compareListingRows),
+    }));
+}
+
 export function buildStockListing(
   storeName: string,
   reportDateIso: string,
   stock: StockLine[],
+  sort: StockListingSort = "group",
 ): StockListing {
   const mapped = stock
     .filter(
@@ -167,29 +196,19 @@ export function buildStockListing(
       price: line.retailPrice,
       quantityOnHand: listingQuantity(line),
     }));
-  const grouped = new Map<string, StockListingRow[]>();
-  for (const row of mapped) {
-    const group = row.productGroup.trim();
-    const list = grouped.get(group) ?? [];
-    list.push(row);
-    grouped.set(group, list);
-  }
-  const groups = [...grouped.entries()]
-    .sort(([left], [right]) => {
-      if (!left && right) return 1;
-      if (left && !right) return -1;
-      return left.localeCompare(right, "en", { sensitivity: "base" });
-    })
-    .map(([group, items]) => ({
-      group,
-      rows: items.sort(compareListingRows),
-    }));
+  const groups =
+    sort === "code"
+      ? mapped.length
+        ? [{ group: "", rows: mapped.sort(compareListingRows) }]
+        : []
+      : groupedSections(mapped);
   const rows = groups.flatMap((section) => section.rows);
   return {
     title: STOCK_LISTING_TITLE,
     storeName: pdfSafeText(storeName),
     reportDateIso,
     reportDate: displayDate(reportDateIso),
+    sort,
     groups,
     rows,
     totalQuantity: rows.reduce((sum, row) => sum + row.quantityOnHand, 0),
